@@ -223,9 +223,8 @@ class Blob(Feature):
         >>> print blobs[0].area()
 
         """
-        return(self.mArea)
-
-
+        return self.mArea
+    
     def minRect(self):
         """
         Returns the corners for the smallest rotated rectangle to enclose the blob.
@@ -235,26 +234,26 @@ class Blob(Feature):
         ang = self.mMinRectangle[2]
         #else:
         #    ang =  90 + self.mMinRectangle[2]
-        ang = 2*pi*(float(ang)/360.00)
+        ang = 2 * pi * (ang / 360.00)
         tx = self.minRectX()
         ty = self.minRectY()
-        w = self.minRectWidth()/2.0
-        h = self.minRectHeight()/2.0
-        derp = np.matrix([[cos(ang),-1*sin(ang),tx],[sin(ang),cos(ang),ty],[0,0,1]])
+        w = self.minRectWidth() / 2.0
+        h = self.minRectHeight() / 2.0
         # [ cos a , -sin a, tx ]
         # [ sin a , cos a , ty ]
         # [ 0     , 0     ,  1 ]
-        tl = np.matrix([-1.0*w,h,1.0]) #Kat gladly supports homo. coordinates.
-        tr = np.matrix([w,h,1.0])
-        bl = np.matrix([-1.0*w,-1.0*h,1.0])
-        br = np.matrix([w,-1.0*h,1.0])
-        tlp = derp*tl.transpose()
-        trp = derp*tr.transpose()
-        blp = derp*bl.transpose()
-        brp = derp*br.transpose()
-        return( (float(tlp[0,0]),float(tlp[1,0])),(float(trp[0,0]),float(trp[1,0])),(float(blp[0,0]),float(blp[1,0])),(float(brp[0,0]),float(brp[1,0])) )
-
-    def drawRect(self,layer=None,color=Color.DEFAULT,width=1,alpha=128):
+        
+        sina = sin(ang)
+        cosa = cos(ang)
+        
+        tl = (-cosa * w - sina * h + tx, -sina * w + cosa * h + ty)
+        tr = (cosa * w - sina * h + tx, sina * w + cosa * h + ty)
+        bl = (-cosa * w + sina * h + tx, -sina * w - cosa * h + ty)
+        br = (cosa * w + sina * h + tx, sina * w - cosa * h + ty)
+        
+        return (tl, tr, bl, br)
+    
+    def drawRect(self, layer = None, color = Color.DEFAULT, width = 1, alpha = 128):
         """
         **SUMMARY**
 
