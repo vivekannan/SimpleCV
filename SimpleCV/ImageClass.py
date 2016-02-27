@@ -22,11 +22,10 @@ import copy # for deep copy
 class ColorSpace:
     """
     **SUMMARY**
-
+    
     The colorspace  class is used to encapsulate the color space of a given image.
-    This class acts like C/C++ style enumerated type.
-
-
+    This class acts like C/C++ style enumerated type
+    
     See: http://stackoverflow.com/questions/2122706/detect-color-space-with-opencv
     """
     UNKNOWN = 0
@@ -41,57 +40,54 @@ class ColorSpace:
 class ImageSet(list):
     """
     **SUMMARY**
-
+    
     This is an abstract class for keeping a list of images.  It has a few
     advantages in that you can use it to auto load data sets from a directory
     or the net.
-
+    
     Keep in mind it inherits from a list too, so all the functionality a
     normal python list has this will too.
-
+    
     **EXAMPLES**
-
-
+    
     >>> imgs = ImageSet()
     >>> imgs.download("ninjas")
     >>> imgs.show(ninjas)
-
-
+    
     or you can load a directory path:
-
+    
     >>> imgs = ImageSet('/path/to/imgs/')
     >>> imgs.show()
-
+    
     This will download and show a bunch of random ninjas.  If you want to
     save all those images locally then just use:
-
+    
     >>> imgs.save()
-
+    
     You can also load up the sample images that come with simplecv as:
-
+    
     >>> imgs = ImageSet('samples')
     >>> imgs.filelist
     >>> logo = imgs.find('simplecv.png')
-
+    
     **TO DO**
-
+    
     Eventually this should allow us to pull image urls / paths from csv files.
     The method also allow us to associate an arbitraty bunch of data with each
     image, and on load/save pickle that data or write it to a CSV file.
-
     """
-
     filelist = None
+    
     def __init__(self, directory = None):
         if not directory:
             return
-
-        if isinstance(directory,list):
+        
+        if isinstance(directory, list):
             if isinstance(directory[0], Image):
-                super(ImageSet,self).__init__(directory)
+                super(ImageSet, self).__init__(directory)
             elif isinstance(directory[0], str) or isinstance(directory[0], unicode):
-                super(ImageSet,self).__init__(map(Image, directory))
-
+                super(ImageSet, self).__init__(map(Image, directory))
+        
         elif directory.lower() == 'samples' or directory.lower() == 'sample':
             pth = LAUNCH_PATH
             pth = os.path.realpath(pth)
@@ -99,61 +95,59 @@ class ImageSet(list):
             self.load(directory)
         else:
             self.load(directory)
-
-    def download(self, tag=None, number=10, size='thumb'):
+    
+    def download(self, tag = None, number = 10, size = 'thumb'):
         """
         **SUMMARY**
-
+        
         This function downloads images from Google Image search based
         on the tag you provide. The number is the number of images you
-        want to have in the list. Valid values for size are 'thumb', 'small',
-        'medium', 'large' or a tuple of exact dimensions i.e. (640,480).
+        want to have in the list. Valid values for size are 'thumb', 'small', 
+        'medium', 'large' or a tuple of exact dimensions i.e. (640, 480).
         Note that 'thumb' is exceptionally faster than others.
-
+        
         .. Warning::
           This requires the python library Beautiful Soup to be installed
           http://www.crummy.com/software/BeautifulSoup/
-
+          
         **PARAMETERS**
-
+        
         * *tag* - A string of tag values you would like to download.
         * *number* - An integer of the number of images to try and download.
         * *size* - the size of the images to download. Valid options a tuple
           of the exact size or a string of the following approximate sizes:
-
+          
           * thumb ~ less than 128x128
           * small  ~ approximately less than 640x480 but larger than 128x128
           * medium ~  approximately less than 1024x768 but larger than 640x480.
           * large ~ > 1024x768
-
+          
         **RETURNS**
-
+        
         Nothing - but caches local copy of images.
-
+        
         **EXAMPLE**
-
+        
         >>> imgs = ImageSet()
         >>> imgs.download("ninjas")
         >>> imgs.show(ninjas)
-
-
+        
         """
-
+        
         try:
             from BeautifulSoup import BeautifulSoup
-
+        
         except:
             print "You need to install Beatutiul Soup to use this function"
             print "to install you can use:"
             print "easy_install beautifulsoup"
-
+            
             return
-
-
+            
         INVALID_SIZE_MSG = """I don't understand what size images you want.
   Valid options: 'thumb', 'small', 'medium', 'large'
-   or a tuple of exact dimensions i.e. (640,480)."""
-
+   or a tuple of exact dimensions i.e. (640, 480)."""
+        
         if isinstance(size, basestring):
             size = size.lower()
             if size == 'thumb':
@@ -167,22 +161,21 @@ class ImageSet(list):
             else:
                 print INVALID_SIZE_MSG
                 return None
-
+        
         elif type(size) == tuple:
             width, height = size
-            size_param = '&tbs=isz:ex,iszw:' + str(width) + ',iszh:' + str(height)
-
+            size_param = '&tbs=isz:ex, iszw:' + str(width) + ', iszh:' + str(height)
+        
         else:
             print INVALID_SIZE_MSG
             return None
-
+        
         # Used to extract imgurl parameter value from a URL
         imgurl_re = re.compile('(?<=(&|\?)imgurl=)[^&]*((?=&)|$)')
-
+        
         add_set = ImageSet()
         candidate_count = 0
-
-
+        
         while len(add_set) < number:
             opener = urllib2.build_opener()
             opener.addheaders = [('User-agent', 'Mozilla/5.0')]
@@ -190,56 +183,51 @@ class ImageSet(list):
                    size_param + "&start=" + str(candidate_count))
             page = opener.open(url)
             soup = BeautifulSoup(page)
-
+            
             img_urls = []
-
+            
             # Gets URLs of the thumbnail images
             if size == 'thumb':
                 imgs = soup.findAll('img')
                 for img in imgs:
                     dl_url = str(dict(img.attrs)['src'])
                     img_urls.append(dl_url)
-
+            
             # Gets the direct image URLs
             else:
                 for link_tag in soup.findAll('a', {'href': re.compile('imgurl=')}):
                     dirty_url = link_tag.get('href') # URL to an image as given by Google Images
                     dl_url = str(re.search(imgurl_re, dirty_url).group()) # The direct URL to the image
                     img_urls.append(dl_url)
-
-
+            
             for dl_url in img_urls:
                 try:
                     add_img = Image(dl_url, verbose=False)
-
+                    
                     # Don't know a better way to check if the image was actually returned
-                    if add_img.height <> 0 and add_img.width <> 0:
+                    if add_img.height != 0 and add_img.width != 0:
                         add_set.append(add_img)
-
+                
                 except:
                     #do nothing
                     None
-
+                
                 if len(add_set) >= number:
                     break
-
-        self.extend(add_set)
-
-
-    def upload(self,dest,api_key=None,api_secret=None, verbose = True):
-        """
         
+        self.extend(add_set)
+    
+    def upload(self, dest, api_key = None, api_secret = None, verbose = True):
+        """
         **SUMMARY**
         
         Uploads all the images to imgur or flickr or dropbox. In verbose mode URL values are printed.
-        
         
         **PARAMETERS**
         
         * *api_key* - a string of the API key.
         * *api_secret* - (required only for flickr and dropbox ) a string of the API secret.
         * *verbose* - If verbose is true all values are printed to the screen
-        
         
         **RETURNS**
         
@@ -249,26 +237,26 @@ class ImageSet(list):
         - Flick returns True on success, else returns False.
         - dropbox returns True on success.
         
-
+        
         **EXAMPLE**
         
         TO upload image to imgur::
         
           >>> imgset = ImageSet("/home/user/Desktop")
-          >>> result = imgset.upload( 'imgur',"MY_API_KEY1234567890" )
+          >>> result = imgset.upload( 'imgur', "MY_API_KEY1234567890" )
           >>> print "Uploaded To: " + result[0]
           
-
+          
         To upload image to flickr::
         
-          >>> imgset.upload('flickr','api_key','api_secret')
+          >>> imgset.upload('flickr', 'api_key', 'api_secret')
           >>> imgset.upload('flickr') #Once the api keys and secret keys are cached.
-
+          
         To upload image to dropbox::
         
-          >>> imgset.upload('dropbox','api_key','api_secret')
+          >>> imgset.upload('dropbox', 'api_key', 'api_secret')
           >>> imgset.upload('dropbox') #Once the api keys and secret keys are cached.
-
+          
         **NOTES**
         
         .. Warning::
@@ -280,98 +268,101 @@ class ImageSet(list):
         
         .. Warning::
           You must supply your own API key.
-
-
+          
         Find more about API keys:
         
         - http://imgur.com/register/api_anon
         - http://www.flickr.com/services/api/misc.api_keys.html
         - https://www.dropbox.com/developers/start/setup#python
-        
-        
         """
         try :
             for i in self:
-                i.upload(dest,api_key,api_secret, verbose)
+                i.upload(dest, api_key, api_secret, verbose)
             return True
-
+        
         except :
             return False
-
+    
     def show(self, showtime = 0.25):
         """
         **SUMMARY**
-
+        
         This is a quick way to show all the items in a ImageSet.
         The time is in seconds. You can also provide a decimal value, so
         showtime can be 1.5, 0.02, etc.
         to show each image.
-
+        
         **PARAMETERS**
-
+        
         * *showtime* - the time, in seconds, to show each image in the set.
-
+        
         **RETURNS**
-
+        
         Nothing.
-
+        
         **EXAMPLE**
-
+        
         >>> imgs = ImageSet()
         >>> imgs.download("ninjas")
         >>> imgs.show()
-
-
        """
-
+       
         for i in self:
             i.show()
             time.sleep(showtime)
-
-    def _get_app_ext(self, loops=0):
-        """ Application extention. Part that secifies amount of loops.
-        if loops is 0, if goes on infinitely.
+    
+    def _get_app_ext(self, loops = 0):
+        """
+            Application extention. Part that secifies amount of loops.
+            if loops is 0, if goes on infinitely.
         """
         bb = "\x21\xFF\x0B"  # application extension
         bb += "NETSCAPE2.0"
         bb += "\x03\x01"
+        
         if loops == 0:
             loops = 2**16-1
+        
         bb += int_to_bin(loops)
         bb += '\x00'  # end
+        
         return bb
-
-    def _get_graphics_control_ext(self, duration=0.1):
-        """ Graphics Control Extension. A sort of header at the start of
-        each image. Specifies transparancy and duration. """
+    
+    def _get_graphics_control_ext(self, duration = 0.1):
+        """
+        Graphics Control Extension. A sort of header at the start of
+        each image. Specifies transparancy and duration.
+        """
         bb = '\x21\xF9\x04'
         bb += '\x08'  # no transparency
-        bb += int_to_bin( int(duration*100) ) # in 100th of seconds
+        bb += int_to_bin(int(duration * 100)) # in 100th of seconds
         bb += '\x00'  # no transparent color
         bb += '\x00'  # end
+        
         return bb
-
-    def _write_gif(self, filename, duration=0.1, loops=0, dither=1):
-        """ Given a set of images writes the bytes to the specified stream.
+    
+    def _write_gif(self, filename, duration = 0.1, loops = 0, dither = 1):
+        """
+            Given a set of images writes the bytes to the specified stream.
         """
         frames = 0
         previous = None
         fp = open(filename, 'wb')
-
+        
         if not PIL_ENABLED:
             logger.warning("Need PIL to write animated gif files.")
             return
-
+        
         converted = []
-
+        
         for img in self:
-            if not isinstance(img,pil.Image):
+            if not isinstance(img, pil.Image):
                 pil_img = img.getPIL()
             else:
                 pil_img = img
-
-            converted.append((pil_img.convert('P',dither=dither), img._get_header_anim()))
-
+            
+            converted.append((pil_img.convert('P', dither = dither), img._get_header_anim()))
+        
         try:
             for img, header_anim in converted:
                 if not previous:
@@ -382,79 +373,80 @@ class ImageSet(list):
                     header = header_anim
                     appext = self._get_app_ext(loops)
                     graphext = self._get_graphics_control_ext(duration)
-
+                    
                     # write global header
                     fp.write(header)
                     fp.write(palette)
                     fp.write(appext)
-
+                    
                     # write image
                     fp.write(graphext)
                     fp.write(imdes)
+                    
                     for d in data:
                         fp.write(d)
-
+                
                 else:
                     # gather info (compress difference)
                     data = getdata(img)
                     imdes, data = data[0], data[1:]
                     graphext = self._get_graphics_control_ext(duration)
-
+                    
                     # write image
                     fp.write(graphext)
                     fp.write(imdes)
+                    
                     for d in data:
                         fp.write(d)
-
+                
                 previous = img.copy()
                 frames = frames + 1
-
+            
             fp.write(";") # end gif
-
+        
         finally:
             fp.close()
+            
             return frames
-
-    def save(self, destination=None, dt=0.2, verbose = False, displaytype=None):
+    
+    def save(self, destination = None, dt = 0.2, verbose = False, displaytype = None):
         """
-        
         **SUMMARY**
-
+        
         This is a quick way to save all the images in a data set.
         Or to Display in webInterface.
-
+        
         If you didn't specify a path one will randomly be generated.
         To see the location the files are being saved to then pass
         verbose = True.
-
+        
         **PARAMETERS**
-
+        
         * *destination* - path to which images should be saved, or name of gif
         * file. If this ends in .gif, the pictures will be saved accordingly.
         * *dt* - time between frames, for creating gif files.
         * *verbose* - print the path of the saved files to the console.
         * *displaytype* - the method use for saving or displaying images.
         
-        
         valid values are:
-
+        
         * 'notebook' - display to the ipython notebook.
         * None - save to a temporary file.
-
+        
         **RETURNS**
-
+        
         Nothing.
-
+        
         **EXAMPLE**
-
+        
         >>> imgs = ImageSet()
         >>> imgs.download("ninjas")
         >>> imgs.save(destination="ninjas_folder", verbose=True)
-
+        
         >>> imgs.save(destination="ninjas.gif", verbose=True)
-
+        
         """
-        if displaytype=='notebook':
+        if displaytype == 'notebook':
             try:
                 from IPython.core.display import Image as IPImage
             except ImportError:
@@ -462,11 +454,12 @@ class ImageSet(list):
                 return
             from IPython.core import display as Idisplay
             for i in self:
-                tf = tempfile.NamedTemporaryFile(suffix=".png")
+                tf = tempfile.NamedTemporaryFile(suffix = ".png")
                 loc = tf.name
                 tf.close()
                 i.save(loc)
-                Idisplay.display(IPImage(filename=loc))
+                Idisplay.display(IPImage(filename = loc))
+                
                 return
         else:
             if destination:
@@ -474,334 +467,340 @@ class ImageSet(list):
                     return self._write_gif(destination, dt)
                 else:
                     for i in self:
-                        i.save(path=destination, temp=True, verbose=verbose)
+                        i.save(path = destination, temp = True, verbose = verbose)
             else:
                 for i in self:
-                    i.save(verbose=verbose)
-
+                    i.save(verbose = verbose)
+    
     def showPaths(self):
         """
         **SUMMARY**
-
+        
         This shows the file paths of all the images in the set.
-
+        
         If they haven't been saved to disk then they will not have a filepath
-
-
+        
         **RETURNS**
-
+        
         Nothing.
-
+        
         **EXAMPLE**
-
+        
         >>> imgs = ImageSet()
         >>> imgs.download("ninjas")
         >>> imgs.save(verbose=True)
         >>> imgs.showPaths()
-
-
+        
         **TO DO**
-
+        
         This should return paths as a list too.
-
         """
-
+        
         for i in self:
             print i.filename
-
+    
     def _read_gif(self, filename):
-        """ read_gif(filename)
-
+        """
+        read_gif(filename)
+        
         Reads images from an animated GIF file. Returns the number of images loaded.
         """
-
+        
         if not PIL_ENABLED:
             return
+        
         elif not os.path.isfile(filename):
             return
-
+        
         pil_img = pil.open(filename)
         pil_img.seek(0)
-
+        
         pil_images = []
+        
         try:
             while True:
                 pil_images.append(pil_img.copy())
                 pil_img.seek(pil_img.tell()+1)
-
+        
         except EOFError:
             pass
-
+        
         loaded = 0
+        
         for img in pil_images:
             self.append(Image(img))
             loaded += 1
-
+        
         return loaded
-
-    def load(self, directory = None, extension = None, sort_by=None):
+    
+    def load(self, directory = None, extension = None, sort_by = None):
         """
         **SUMMARY**
-
+        
         This function loads up files automatically from the directory you pass
         it.  If you give it an extension it will only load that extension
         otherwise it will try to load all know file types in that directory.
-
+        
         extension should be in the format:
         extension = 'png'
-
+        
         **PARAMETERS**
-
+        
         * *directory* - The path or directory from which to load images.
         * *extension* - The extension to use. If none is given png is the default.
         * *sort_by* - Sort the directory based on one of the following parameters passed as strings.
           * *time* - the modification time of the file.
           * *name* - the name of the file.
           * *size* - the size of the file.
-
+          
           The default behavior is to leave the directory unsorted.
-
+          
         **RETURNS**
-
+        
         The number of images in the image set.
-
+        
         **EXAMPLE**
-
+        
         >>> imgs = ImageSet()
         >>> imgs.load("images/faces")
         >>> imgs.load("images/eyes", "png")
-
+        
         """
         if not directory:
             logger.warning("You need to give a directory to load files from.")
             return
-
+        
         if not os.path.exists(directory):
             logger.warning( "Invalid image path given.")
             return
-
-
+        
         if extension:
             #regexes to ignore case
             regexList = [ '[' + letter + letter.upper() + ']' for letter in extension]
             regex = ''.join(regexList)
             regex = "*." + regex
             formats = [os.path.join(directory, regex)]
-
+        
         else:
             formats = [os.path.join(directory, x) for x in IMAGE_FORMATS]
-
-
+        
         file_set = [glob.glob(p) for p in formats]
         full_set = []
+        
         for f in file_set:
             for i in f:
                 full_set.append(i)
-
+        
         file_set = full_set
+        
         if(sort_by is not None):
             if( sort_by.lower() == "time"):
-                file_set = sorted(file_set,key=os.path.getmtime)
+                file_set = sorted(file_set, key = os.path.getmtime)
             if( sort_by.lower() == "name"):
                 file_set = sorted(file_set)
             if( sort_by.lower() == "size"):
-                file_set = sorted(file_set,key=os.path.getsize)
-
+                file_set = sorted(file_set, key = os.path.getsize)
+        
         self.filelist = dict()
-
+        
         for i in file_set:
             tmp = None
+            
             try:
                 tmp = Image(i)
-                if( tmp is not None and tmp.width > 0 and tmp.height > 0):
+                if(tmp is not None and tmp.width > 0 and tmp.height > 0):
                     if sys.platform.lower() == 'win32' or sys.platform.lower() == 'win64':
                         self.filelist[tmp.filename.split('\\')[-1]] = tmp
                     else:
                         self.filelist[tmp.filename.split('/')[-1]] = tmp
+                    
                     self.append(tmp)
             except:
                 continue
+        
         return len(self)
-
-    def standardize(self,width,height):
+    
+    def standardize(self, width, height):
         """
         **SUMMARY**
-
+        
         Resize every image in the set to a standard size.
-
+        
         **PARAMETERS**
-
+        
         * *width* - the width that we want for every image in the set.
         * *height* - the height that we want for every image in the set.
-
+        
         **RETURNS**
-
+        
         A new image set where every image in the set is scaled to the desired size.
-
+        
         **EXAMPLE**
-
+        
         >>>> iset = ImageSet("./b/")
-        >>>> thumbnails = iset.standardize(64,64)
+        >>>> thumbnails = iset.standardize(64, 64)
         >>>> for t in thumbnails:
         >>>>   t.show()
-
         """
+        
         retVal = ImageSet()
+        
         for i in self:
-            retVal.append(i.resize(width,height))
+            retVal.append(i.resize(width, height))
+        
         return retVal
-
+    
     def dimensions(self):
         """
         **SUMMARY**
-
+        
         Return an np.array that are the width and height of every image in the image set.
-
+        
         **PARAMETERS**
-
+        
         --NONE--
-
+        
         **RETURNS**
         A 2xN numpy array where N is the number of images in the set. The first column is
         the width, and the second collumn is the height.
-
+        
         **EXAMPLE**
         >>> iset = ImageSet("./b/")
         >>> sz = iset.dimensions()
-        >>> np.max(sz[:,0]) # returns the largest width in the set.
-
+        >>> np.max(sz[:, 0]) # returns the largest width in the set.
         """
         retVal = []
+        
         for i in self:
-            retVal.append((i.width,i.height))
+            retVal.append((i.width, i.height))
+        
         return np.array(retVal)
-
-    def average(self, mode="first", size=(None,None)):
+    
+    def average(self, mode = "first", size = (None, None)):
         """
         **SUMMARY**
-
+        
         Casts each in the image set into a 32F image, averages them together and returns the results.
         If the images are different sizes the method attempts to standarize them.
-
+        
         **PARAMETERS**
-
+        
         * *mode* -
           * "first" - resize everything to the size of the first image.
           * "max" - resize everything to be the max width and max height of the set.
           * "min" - resize everything to be the min width and min height of the set.
           * "average" - resize everything to be the average width and height of the set
           * "fixed" - fixed, use the size tuple provided.
-
+          
         * *size* - if the mode is set to fixed use this tuple as the size of the resulting image.
-
+        
         **RETURNS**
-
+        
         Returns a single image that is the average of all the values.
-
+        
         **EXAMPLE**
-
+        
         >>> imgs = ImageSet()
         >>> imgs.load("images/faces")
         >>> result = imgs.average(mode="first")
         >>> result.show()
-
+        
         **TODO**
         * Allow the user to pass in an offset parameters that blit the images into the resutl.
         """
         fw = 0
         fh = 0
         # figger out how we will handle everything
-        if( len(self) <= 0 ):
+        if(len(self) <= 0):
             return ImageSet()
-
+        
         vals = self.dimensions()
-        if( mode.lower()  == "first" ):
+        if(mode.lower()  == "first"):
             fw = self[0].width
             fh = self[0].height
-        elif( mode.lower()  == "fixed" ):
+        elif mode.lower()  == "fixed":
             fw = size[0]
             fh = size[1]
-        elif( mode.lower()  == "max" ):
-            fw = np.max(vals[:,0])
-            fh = np.max(vals[:,1])
-        elif( mode.lower()  == "min" ):
-            fw = np.min(vals[:,0])
-            fh = np.min(vals[:,1])
-        elif( mode.lower()  == "average" ):
-            fw = int(np.average(vals[:,0]))
-            fh = int(np.average(vals[:,1]))
+        elif mode.lower()  == "max":
+            fw = np.max(vals[:, 0])
+            fh = np.max(vals[:, 1])
+        elif mode.lower()  == "min":
+            fw = np.min(vals[:, 0])
+            fh = np.min(vals[:, 1])
+        elif mode.lower()  == "average":
+            fw = int(np.average(vals[:, 0]))
+            fh = int(np.average(vals[:, 1]))
         #determine if we really need to resize the images
-        t1 = np.sum(vals[:,0]-fw)
-        t2 = np.sum(vals[:,1]-fh)
-        if( t1 != 0 or t2 != 0 ):
-            resized = self.standardize(fw,fh)
+        t1 = np.sum(vals[:, 0] - fw)
+        t2 = np.sum(vals[:, 1] - fh)
+        
+        if(t1 != 0 or t2 != 0):
+            resized = self.standardize(fw, fh)
         else:
             resized = self
         # Now do the average calculation
-        accumulator = cv.CreateImage((fw,fh), cv.IPL_DEPTH_8U,3)
+        accumulator = cv.CreateImage((fw, fh), cv.IPL_DEPTH_8U, 3)
         cv.Zero(accumulator)
-        alpha = float(1.0/len(resized))
-        beta = float((len(resized)-1.0)/len(resized))
+        alpha = 1.0 / len(resized)
+        beta = (len(resized) - 1.0) / len(resized)
+        
         for i in resized:
-            cv.AddWeighted(i.getBitmap(),alpha,accumulator,beta,0,accumulator)
-        retVal =  Image(accumulator)
+            cv.AddWeighted(i.getBitmap(), alpha, accumulator, beta, 0, accumulator)
+        
+        retVal = Image(accumulator)
+        
         return retVal
-
-
-    def __getitem__(self,key):
+    
+    def __getitem__(self, key):
         """
         **SUMMARY**
-
+        
         Returns a ImageSet when sliced. Previously used to
         return list. Now it is possible to ImageSet member
         functions on sub-lists
-
+        
         """
         if type(key) is types.SliceType: #Or can use 'try:' for speed
             return ImageSet(list.__getitem__(self, key))
         else:
-            return list.__getitem__(self,key)
-
+            return list.__getitem__(self, key)
+    
     def __getslice__(self, i, j):
         """
         Deprecated since python 2.0, now using __getitem__
         """
-        return self.__getitem__(slice(i,j))
-
+        return self.__getitem__(slice(i, j))
 
 class Image:
     """
     **SUMMARY**
-
+    
     The Image class is the heart of SimpleCV and allows you to convert to and
     from a number of source types with ease.  It also has intelligent buffer
     management, so that modified copies of the Image required for algorithms
     such as edge detection, etc can be cached and reused when appropriate.
-
-
+    
     Image are converted into 8-bit, 3-channel images in RGB colorspace.  It will
     automatically handle conversion from other representations into this
     standard format.  If dimensions are passed, an empty image is created.
-
+    
     **EXAMPLE**
-
+    
     >>> i = Image("/path/to/image.png")
     >>> i = Camera().getImage()
-
-
+    
     You can also just load the SimpleCV logo using:
-
+    
     >>> img = Image("simplecv")
     >>> img = Image("logo")
     >>> img = Image("logo_inverted")
     >>> img = Image("logo_transparent")
-
+    
     Or you can load an image from a URL:
-
+    
     >>> img = Image("http://www.simplecv.org/image.png")
-
     """
-
+    
     width = 0    #width and height in px
     height = 0
     depth = 0
@@ -809,16 +808,15 @@ class Image:
     filehandle = "" #filehandle if used
     camera = ""
     _mLayers = []
-
+    
     _mDoHuePalette = False
     _mPaletteBins = None
     _mPalette = None
     _mPaletteMembers = None
     _mPalettePercentages = None
-
+    
     _barcodeReader = "" #property for the ZXing barcode reader
-
-
+    
     #these are buffer frames for various operations on the image
     _bitmap = ""  #the bitmap (iplimage)  representation of the image
     _matrix = ""  #the matrix (cvmat) representation
@@ -835,84 +833,83 @@ class Image:
     _pgsurface = ""
     _cv2Numpy = None #numpy array for OpenCV >= 2.3
     _cv2GrayNumpy = None #grayscale numpy array for OpenCV >= 2.3
-    _gridLayer = [None,[0,0]]#to store grid details | Format -> [gridIndex , gridDimensions]
-
+    _gridLayer = [None, [0, 0]]#to store grid details | Format -> [gridIndex, gridDimensions]
+    
     #For DFT Caching
-    _DFT = [] #an array of 2 channel (real,imaginary) 64F images
-
+    _DFT = [] #an array of 2 channel (real, imaginary) 64F images
+    
     #Keypoint caching values
     _mKeyPoints = None
     _mKPDescriptors = None
     _mKPFlavor = "NONE"
-
+    
     #temp files
     _tempFiles = []
-
+    
     #when we empty the buffers, populate with this:
     _initialized_buffers = {
-        "_bitmap": "",
-        "_matrix": "",
-        "_grayMatrix": "",
-        "_graybitmap": "",
-        "_equalizedgraybitmap": "",
-        "_blobLabel": "",
-        "_edgeMap": "",
-        "_cannyparam": (0, 0),
-        "_pil": "",
-        "_numpy": "",
-        "_grayNumpy":"",
-        "_pgsurface": "",
-        "_cv2GrayNumpy": "",
-        "_cv2Numpy":""}
-
+        "_bitmap": "", 
+        "_matrix": "", 
+        "_grayMatrix": "", 
+        "_graybitmap": "", 
+        "_equalizedgraybitmap": "", 
+        "_blobLabel": "", 
+        "_edgeMap": "", 
+        "_cannyparam": (0, 0), 
+        "_pil": "", 
+        "_numpy": "", 
+        "_grayNumpy":"", 
+        "_pgsurface": "", 
+        "_cv2GrayNumpy": "", 
+        "_cv2Numpy":"" 
+    }
+    
     #The variables _uncroppedX and _uncroppedY are used to buffer the points when we crop the image.
     _uncroppedX = 0
     _uncroppedY = 0
-
+    
     def __repr__(self):
         if len(self.filename) == 0:
             fn = "None"
         else:
             fn = self.filename
         return "<SimpleCV.Image Object size:(%d, %d), filename: (%s), at memory location: (%s)>" % (self.width, self.height, fn, hex(id(self)))
-
-
+    
     #initialize the frame
     #parameters: source designation (filename)
     #todo: handle camera/capture from file cases (detect on file extension)
-    def __init__(self, source = None, camera = None, colorSpace = ColorSpace.UNKNOWN,verbose=True, sample=False, cv2image=False, webp=False):
+    def __init__(self, source = None, camera = None, colorSpace = ColorSpace.UNKNOWN, verbose = True, sample = False, cv2image = False, webp = False):
         """
         **SUMMARY**
-
+        
         The constructor takes a single polymorphic parameter, which it tests
         to see how it should convert into an RGB image.  Supported types include:
-
+        
         **PARAMETERS**
-
+        
         * *source* - The source of the image. This can be just about anything, a numpy arrray, a file name, a width and height
           tuple, a url. Certain strings such as "lenna" or "logo" are loaded automatically for quick testing.
-
+          
         * *camera* - A camera to pull a live image.
-
+        
         * *colorspace* - A default camera color space. If none is specified this will usually default to the BGR colorspace.
-
+        
         * *sample* - This is set to true if you want to load some of the included sample images without having to specify the complete path
-
-
+        
         **EXAMPLES**
-
+        
         >>> img = Image('simplecv')
         >>> img = Image('test.png')
         >>> img = Image('http://www.website.com/my_image.jpg')
         >>> img.show()
-
+        
         **NOTES**
-
+        
         OpenCV: iplImage and cvMat types
         Python Image Library: Image type
         Filename: All opencv supported types (jpg, png, bmp, gif, etc)
         URL: The source can be a url, but must include the http://
-
+        
         """
         self._mLayers = []
         self.camera = camera
@@ -929,8 +926,7 @@ class Image:
         self._mPalettePercentages = None
         #Temp files
         self._tempFiles = []
-
-
+        
         #Check if need to load from URL
         #(this can be made shorter)if type(source) == str and (source[:7].lower() == "http://" or source[:8].lower() == "https://"):
         if isinstance(source, basestring) and (source.lower().startswith("http://") or source.lower().startswith("https://")):
@@ -942,90 +938,88 @@ class Image:
             #if verbose:
                 #print "Couldn't open Image from URL:" + source
             #return None
-
+            
             im = StringIO(img_file.read())
             source = pil.open(im).convert("RGB")
             
         #Check if loaded from base64 URI
-        if isinstance(source, basestring) and (source.lower().startswith("data:image/png;base64,")):
+        if isinstance(source, basestring) and (source.lower().startswith("data:image/png;base64, ")):
             img = source[22:].decode("base64")
             im = StringIO(img)
             source = pil.open(im).convert("RGB")
-
+        
         #This section loads custom built-in images
         if isinstance(source, basestring):
             tmpname = source.lower()
-
+            
             if tmpname == "simplecv" or tmpname == "logo":
-                imgpth = os.path.join(LAUNCH_PATH, 'sampleimages','simplecv.png')
+                imgpth = os.path.join(LAUNCH_PATH, 'sampleimages', 'simplecv.png')
                 source = imgpth
             elif tmpname == "simplecv_inverted" or tmpname == "inverted" or tmpname == "logo_inverted":
-                imgpth = os.path.join(LAUNCH_PATH, 'sampleimages','simplecv_inverted.png')
+                imgpth = os.path.join(LAUNCH_PATH, 'sampleimages', 'simplecv_inverted.png')
                 source = imgpth
             elif tmpname == "lenna":
-                imgpth = os.path.join(LAUNCH_PATH, 'sampleimages','lenna.png')
+                imgpth = os.path.join(LAUNCH_PATH, 'sampleimages', 'lenna.png')
                 source = imgpth
             elif tmpname == "lyle":
-                imgpth = os.path.join(LAUNCH_PATH, 'sampleimages','LyleJune1973.png')
+                imgpth = os.path.join(LAUNCH_PATH, 'sampleimages', 'LyleJune1973.png')
                 source = imgpth
             elif tmpname == "parity":
-                choice = random.choice(['LyleJune1973.png','lenna.png'])
-                imgpth = os.path.join(LAUNCH_PATH, 'sampleimages',choice)
+                choice = random.choice(['LyleJune1973.png', 'lenna.png'])
+                imgpth = os.path.join(LAUNCH_PATH, 'sampleimages', choice)
                 source = imgpth
-                
             elif sample:
                 imgpth = os.path.join(LAUNCH_PATH, 'sampleimages', source)
                 source = imgpth
-
+        
         if (type(source) == tuple):
             w = int(source[0])
             h = int(source[1])
-            source = cv.CreateImage((w,h), cv.IPL_DEPTH_8U, 3)
+            source = cv.CreateImage((w, h), cv.IPL_DEPTH_8U, 3)
             cv.Zero(source)
+        
         if (type(source) == cv.cvmat):
             self._matrix = cv.CreateMat(source.rows, source.cols, cv.CV_8UC3)
-            if((source.step/source.cols)==3): #this is just a guess
+            if((source.step / source.cols) == 3): #this is just a guess
                 cv.Copy(source, self._matrix, None)
                 self._colorSpace = ColorSpace.BGR
-            elif((source.step/source.cols)==1):
+            elif (source.step / source.cols) == 1:
                 cv.Merge(source, source, source, None, self._matrix)
                 self._colorSpace = ColorSpace.GRAY 
             else:
                 self._colorSpace = ColorSpace.UNKNOWN
                 warnings.warn("Unable to process the provided cvmat") 
-
-
+        
         elif (type(source) == np.ndarray):  #handle a numpy array conversion
             if (type(source[0, 0]) == np.ndarray): #we have a 3 channel array
                 #convert to an iplimage bitmap
                 source = source.astype(np.uint8)
                 self._numpy = source
+                
                 if not cv2image:
                     invertedsource = source[:, :, ::-1].transpose([1, 0, 2])
                 else:
                     # If the numpy array is from cv2, then it must not be transposed.
                     invertedsource = source
-
+                
                 #invertedsource = source[:, :, ::-1].transpose([1, 0, 2]) # do not un-comment. breaks cv2 image support
                 self._bitmap = cv.CreateImageHeader((invertedsource.shape[1], invertedsource.shape[0]), cv.IPL_DEPTH_8U, 3)
-                cv.SetData(self._bitmap, invertedsource.tostring(),
-                    invertedsource.dtype.itemsize * 3 * invertedsource.shape[1])
+                cv.SetData(self._bitmap, invertedsource.tostring(), invertedsource.dtype.itemsize * 3 * invertedsource.shape[1])
                 self._colorSpace = ColorSpace.BGR #this is an educated guess
             else:
                 #we have a single channel array, convert to an RGB iplimage
-
                 source = source.astype(np.uint8)
+                
                 if not cv2image:
-                    source = source.transpose([1,0]) #we expect width/height but use col/row
+                    source = source.transpose([1, 0]) #we expect width/height but use col/row
+                
                 self._bitmap = cv.CreateImage((source.shape[1], source.shape[0]), cv.IPL_DEPTH_8U, 3)
                 channel = cv.CreateImageHeader((source.shape[1], source.shape[0]), cv.IPL_DEPTH_8U, 1)
                 #initialize an empty channel bitmap
-                cv.SetData(channel, source.tostring(),
-                    source.dtype.itemsize * source.shape[1])
+                cv.SetData(channel, source.tostring(), source.dtype.itemsize * source.shape[1])
                 cv.Merge(channel, channel, channel, None, self._bitmap)
                 self._colorSpace = ColorSpace.BGR
-
-
+        
         elif (type(source) == cv.iplimage):
             if (source.nChannels == 1):
                 self._bitmap = cv.CreateImage(cv.GetSize(source), source.depth, 3)
@@ -1035,15 +1029,16 @@ class Image:
                 self._bitmap = cv.CreateImage(cv.GetSize(source), source.depth, 3)
                 cv.Copy(source, self._bitmap, None) 
                 self._colorSpace = ColorSpace.BGR
+        
         elif (type(source) == type(str()) or source.__class__.__name__ == 'StringIO'):
             if source == '':
                 raise IOError("No filename provided to Image constructor")
-
-        
+            
             elif webp or source.split('.')[-1] == 'webp':
                 try:
                     if source.__class__.__name__ == 'StringIO':
-                      source.seek(0) # set the stringIO to the begining
+                        source.seek(0) # set the stringIO to the begining
+                    
                     self._pil = pil.open(source)
                     self._bitmap = cv.CreateImageHeader(self._pil.size, cv.IPL_DEPTH_8U, 3)
                 except:
@@ -1052,49 +1047,44 @@ class Image:
                     except ImportError:
                         logger.warning('The webm module or latest PIL / PILLOW module needs to be installed to load webp files: https://github.com/sightmachine/python-webm')
                         return
-
+                    
                     WEBP_IMAGE_DATA = bytearray(file(source, "rb").read())
                     result = webmDecode.DecodeRGB(WEBP_IMAGE_DATA)
                     webpImage = pil.frombuffer(
-                        "RGB", (result.width, result.height), str(result.bitmap),
+                        "RGB", (result.width, result.height), str(result.bitmap), 
                         "raw", "RGB", 0, 1
                     )
                     self._pil = webpImage.convert("RGB")
                     self._bitmap = cv.CreateImageHeader(self._pil.size, cv.IPL_DEPTH_8U, 3)
                     self.filename = source
+                
                 cv.SetData(self._bitmap, self._pil.tostring())
                 cv.CvtColor(self._bitmap, self._bitmap, cv.CV_RGB2BGR)
-
+            
             else:
                 self.filename = source
                 try:
-                    self._bitmap = cv.LoadImage(self.filename, iscolor=cv.CV_LOAD_IMAGE_COLOR)
+                    self._bitmap = cv.LoadImage(self.filename, iscolor = cv.CV_LOAD_IMAGE_COLOR)
                 except:
                     self._pil = pil.open(self.filename).convert("RGB")
                     self._bitmap = cv.CreateImageHeader(self._pil.size, cv.IPL_DEPTH_8U, 3)
                     cv.SetData(self._bitmap, self._pil.tostring())
                     cv.CvtColor(self._bitmap, self._bitmap, cv.CV_RGB2BGR)
-
+                
                 #TODO, on IOError fail back to PIL
                 self._colorSpace = ColorSpace.BGR
-
-
+        
         elif (type(source) == pg.Surface):
             self._pgsurface = source
             self._bitmap = cv.CreateImageHeader(self._pgsurface.get_size(), cv.IPL_DEPTH_8U, 3)
             cv.SetData(self._bitmap, pg.image.tostring(self._pgsurface, "RGB"))
             cv.CvtColor(self._bitmap, self._bitmap, cv.CV_RGB2BGR)
             self._colorSpace = ColorSpace.BGR
-
-
-        elif (PIL_ENABLED and (
-                (len(source.__class__.__bases__) and source.__class__.__bases__[0].__name__ == "ImageFile")
-                or source.__class__.__name__ == "JpegImageFile"
-                or source.__class__.__name__ == "WebPPImageFile"
-                or  source.__class__.__name__ == "Image")):
-
+        
+        elif (PIL_ENABLED and ((len(source.__class__.__bases__) and source.__class__.__bases__[0].__name__ == "ImageFile") or source.__class__.__name__ == "JpegImageFile" or source.__class__.__name__ == "WebPPImageFile" or source.__class__.__name__ == "Image")):
             if source.mode != 'RGB':
                 source = source.convert('RGB')
+            
             self._pil = source
             #from the opencv cookbook
             #http://opencv.willowgarage.com/documentation/python/cookbook.html
@@ -1103,98 +1093,97 @@ class Image:
             self._colorSpace = ColorSpace.BGR
             cv.CvtColor(self._bitmap, self._bitmap, cv.CV_RGB2BGR)
             #self._bitmap = cv.iplimage(self._bitmap)
-
-
+        
         else:
             return None
-
+        
         #if the caller passes in a colorspace we overide it
         if(colorSpace != ColorSpace.UNKNOWN):
             self._colorSpace = colorSpace
-
-
+        
         bm = self.getBitmap()
         self.width = bm.width
         self.height = bm.height
         self.depth = bm.depth
-
-
+    
     def __del__(self):
         """
         This is called when the instance is about to be destroyed also called a destructor.
         """
         try :
             for i in self._tempFiles:
-                if (i[1]):
+                if(i[1]):
                     os.remove(i[0])
         except :
             pass
-
+    
     def getEXIFData(self):
         """
         **SUMMARY**
-
+        
         This function extracts the exif data from an image file like JPEG or TIFF. The data is returned as a dict.
 
         **RETURNS**
-
+        
         A dictionary of key value pairs. The value pairs are defined in the EXIF.py file.
-
+        
         **EXAMPLE**
-
+        
         >>> img = Image("./SimpleCV/sampleimages/OWS.jpg")
         >>> data = img.getEXIFData()
         >>> data['Image GPSInfo'].values
-
+        
         **NOTES**
-
+        
         * Compliments of: http://exif-py.sourceforge.net/
-
+        
         * See also: http://en.wikipedia.org/wiki/Exchangeable_image_file_format
-
+        
         **See Also**
-
+        
         :py:class:`EXIF`
         """
         import os, string
-        if( len(self.filename) < 5 or self.filename is None ):
+        
+        if(len(self.filename) < 5 or self.filename is None):
             #I am not going to warn, better of img sets
             #logger.warning("ImageClass.getEXIFData: This image did not come from a file, can't get EXIF data.")
             return {}
-
+        
         fileName, fileExtension = os.path.splitext(self.filename)
         fileExtension = string.lower(fileExtension)
-        if( fileExtension != '.jpeg' and fileExtension != '.jpg' and
-            fileExtension != 'tiff' and fileExtension != '.tif'):
+        if(fileExtension != '.jpeg' and fileExtension != '.jpg' and fileExtension != 'tiff' and fileExtension != '.tif'):
             #logger.warning("ImageClass.getEXIFData: This image format does not support EXIF")
             return {}
-
-        raw = open(self.filename,'rb')
+        
+        raw = open(self.filename, 'rb')
         data = process_file(raw)
+        
         return data
-
+    
     def live(self):
         """
         **SUMMARY**
-
+        
         This shows a live view of the camera.
         * Left click will show mouse coordinates and color.
         * Right click will kill the live image.
-
+        
         **RETURNS**
-
+        
         Nothing. In place method.
-
+        
         **EXAMPLE**
-
+        
         >>> cam = Camera()
         >>> cam.live()
-
+        
         """
-
+        
         start_time = time.time()
-
+        
         from SimpleCV.Display import Display
+        
         i = self
         d = Display(i.size())
         i.save(d)
@@ -1204,291 +1193,278 @@ class Image:
             i = self
             i.clearLayers()
             elapsed_time = time.time() - start_time
-
-
+            
             if d.mouseLeft:
-                txt = "coord: (" + str(d.mouseX) + "," + str(d.mouseY) + ")"
-                i.dl().text(txt, (10,i.height / 2), color=col)
-                txt = "color: " + str(i.getPixel(d.mouseX,d.mouseY))
-                i.dl().text(txt, (10,(i.height / 2) + 10), color=col)
-                print "coord: (" + str(d.mouseX) + "," + str(d.mouseY) + "), color: " + str(i.getPixel(d.mouseX,d.mouseY))
-
-
+                txt = "coord: (" + str(d.mouseX) + ", " + str(d.mouseY) + ")"
+                i.dl().text(txt, (10, i.height / 2), color=col)
+                txt = "color: " + str(i.getPixel(d.mouseX, d.mouseY))
+                i.dl().text(txt, (10, (i.height / 2) + 10), color=col)
+                print "coord: (" + str(d.mouseX) + ", " + str(d.mouseY) + "), color: " + str(i.getPixel(d.mouseX, d.mouseY))
+            
             if elapsed_time > 0 and elapsed_time < 5:
-
-                i.dl().text("In live mode", (10,10), color=col)
-                i.dl().text("Left click will show mouse coordinates and color", (10,20), color=col)
-                i.dl().text("Right click will kill the live image", (10,30), color=col)
-
-
+                i.dl().text("In live mode", (10, 10), color=col)
+                i.dl().text("Left click will show mouse coordinates and color", (10, 20), color=col)
+                i.dl().text("Right click will kill the live image", (10, 30), color=col)
+            
             i.save(d)
+            
             if d.mouseRight:
                 print "Closing Window"
                 d.done = True
-
-
+        
         pg.quit()
-
+    
     def getColorSpace(self):
         """
         **SUMMARY**
-
+        
         Returns the value matched in the color space class
-
+        
         **RETURNS**
-
+        
         Integer corresponding to the color space.
-
+        
         **EXAMPLE**
-
+        
         >>> if(image.getColorSpace() == ColorSpace.RGB)
-
+        
         **SEE ALSO**
-
+        
         :py:class:`ColorSpace`
-
         """
         return self._colorSpace
-
-
+    
     def isRGB(self):
         """
         **SUMMARY**
-
+        
         Returns true if this image uses the RGB colorspace.
-
+        
         **RETURNS**
-
+        
         True if the image uses the RGB colorspace, False otherwise.
-
+        
         **EXAMPLE**
-
-        >>> if( img.isRGB() ):
-        >>>    r,g,b = img.splitChannels()
-
+        
+        >>> if img.isRGB():
+        >>>    r, g, b = img.splitChannels()
+        
         **SEE ALSO**
-
+        
         :py:meth:`toRGB`
-
-
         """
-        return(self._colorSpace==ColorSpace.RGB)
-
-
+        return self._colorSpace == ColorSpace.RGB
+    
     def isBGR(self):
         """
         **SUMMARY**
-
+        
         Returns true if this image uses the BGR colorspace.
-
+        
         **RETURNS**
-
+        
         True if the image uses the BGR colorspace, False otherwise.
-
+        
         **EXAMPLE**
-
-        >>> if( img.isBGR() ):
-        >>>    b,g,r = img.splitChannels()
-
+        
+        >>> if img.isBGR():
+        >>>    b, g, r = img.splitChannels()
+        
         **SEE ALSO**
-
+        
         :py:meth:`toBGR`
-
+        
         """
-        return(self._colorSpace==ColorSpace.BGR)
-
-
+        return self._colorSpace == ColorSpace.BGR
+    
     def isHSV(self):
         """
         **SUMMARY**
-
+        
         Returns true if this image uses the HSV colorspace.
-
+        
         **RETURNS**
-
+        
         True if the image uses the HSV colorspace, False otherwise.
-
+        
         **EXAMPLE**
-
-        >>> if( img.isHSV() ):
-        >>>    h,s,v = img.splitChannels()
-
+        
+        >>> if img.isHSV():
+        >>>    h, s, v = img.splitChannels()
+        
         **SEE ALSO**
-
+        
         :py:meth:`toHSV`
-
         """
-        return(self._colorSpace==ColorSpace.HSV)
-
-
+        return self._colorSpace == ColorSpace.HSV
+    
     def isHLS(self):
         """
         **SUMMARY**
-
+        
         Returns true if this image uses the HLS colorspace.
-
+        
         **RETURNS**
-
+        
         True if the image uses the HLS colorspace, False otherwise.
-
+        
         **EXAMPLE**
-
-        >>> if( img.isHLS() ):
-        >>>    h,l,s = img.splitChannels()
-
+        
+        >>> if img.isHLS():
+        >>>    h, l, s = img.splitChannels()
+        
         **SEE ALSO**
-
+        
         :py:meth:`toHLS`
-
+        
         """
-        return(self._colorSpace==ColorSpace.HLS)
-
-
+        return self._colorSpace == ColorSpace.HLS
+    
     def isXYZ(self):
         """
         **SUMMARY**
-
+        
         Returns true if this image uses the XYZ colorspace.
-
+        
         **RETURNS**
-
+        
         True if the image uses the XYZ colorspace, False otherwise.
-
+        
         **EXAMPLE**
-
-        >>> if( img.isXYZ() ):
-        >>>    x,y,z = img.splitChannels()
-
+        
+        >>> if img.isXYZ():
+        >>>    x, y, z = img.splitChannels()
+        
         **SEE ALSO**
-
+        
         :py:meth:`toXYZ`
-
         """
-        return(self._colorSpace==ColorSpace.XYZ)
-
-
+        return self._colorSpace == ColorSpace.XYZ
+    
     def isGray(self):
         """
         **SUMMARY**
-
+        
         Returns true if this image uses the Gray colorspace.
-
+        
         **RETURNS**
-
+        
         True if the image uses the Gray colorspace, False otherwise.
-
+        
         **EXAMPLE**
-
-        >>> if( img.isGray() ):
+        
+        >>> if img.isGray():
         >>>    print "The image is in Grayscale."
-
+        
         **SEE ALSO**
-
+        
         :py:meth:`toGray`
-
         """
-        return(self._colorSpace==ColorSpace.GRAY)
-
+        return self._colorSpace == ColorSpace.GRAY
+    
     def isYCrCb(self):
         """
         **SUMMARY**
-
+        
         Returns true if this image uses the YCrCb colorspace.
-
+        
         **RETURNS**
-
+        
         True if the image uses the YCrCb colorspace, False otherwise.
-
+        
         **EXAMPLE**
-
-        >>> if( img.isYCrCb() ):
-        >>>    Y,Cr,Cb = img.splitChannels()
-
+        
+        >>> if img.isYCrCb():
+        >>>    Y, Cr, Cb = img.splitChannels()
+        
         **SEE ALSO**
-
+        
         :py:meth:`toYCrCb`
-
         """
-        return(self._colorSpace==ColorSpace.YCrCb)
-
+        return self._colorSpace == ColorSpace.YCrCb
+    
     def toRGB(self):
         """
         **SUMMARY**
-
+        
         This method attemps to convert the image to the RGB colorspace.
         If the color space is unknown we assume it is in the BGR format
-
+        
         **RETURNS**
-
-        Returns the converted image if the conversion was successful,
+        
+        Returns the converted image if the conversion was successful, 
         otherwise None is returned.
-
+        
         **EXAMPLE**
-
+        
         >>> img = Image("lenna")
         >>> RGBImg = img.toRGB()
-
+        
         **SEE ALSO**
-
+        
         :py:meth:`isRGB`
-
         """
-
         retVal = self.getEmpty()
-        if( self._colorSpace == ColorSpace.BGR or
-                self._colorSpace == ColorSpace.UNKNOWN ):
+        
+        if(self._colorSpace == ColorSpace.BGR or self._colorSpace == ColorSpace.UNKNOWN):
             cv.CvtColor(self.getBitmap(), retVal, cv.CV_BGR2RGB)
-        elif( self._colorSpace == ColorSpace.HSV ):
+        
+        elif self._colorSpace == ColorSpace.HSV:
             cv.CvtColor(self.getBitmap(), retVal, cv.CV_HSV2RGB)
-        elif( self._colorSpace == ColorSpace.HLS ):
+        
+        elif(self._colorSpace == ColorSpace.HLS)
             cv.CvtColor(self.getBitmap(), retVal, cv.CV_HLS2RGB)
-        elif( self._colorSpace == ColorSpace.XYZ ):
+        
+        elif self._colorSpace == ColorSpace.XYZ:
             cv.CvtColor(self.getBitmap(), retVal, cv.CV_XYZ2RGB)
-        elif( self._colorSpace == ColorSpace.YCrCb ):
+        
+        elif self._colorSpace == ColorSpace.YCrCb:
             cv.CvtColor(self.getBitmap(), retVal, cv.CV_YCrCb2RGB)
-        elif( self._colorSpace == ColorSpace.RGB ):
+        
+        elif self._colorSpace == ColorSpace.RGB :
             retVal = self.getBitmap()
+        
         else:
             logger.warning("Image.toRGB: There is no supported conversion to RGB colorspace")
             return None
-        return Image(retVal, colorSpace=ColorSpace.RGB )
-
-
+        
+        return Image(retVal, colorSpace = ColorSpace.RGB)
+    
     def toBGR(self):
         """
         **SUMMARY**
-
+        
         This method attemps to convert the image to the BGR colorspace.
         If the color space is unknown we assume it is in the BGR format.
-
+        
         **RETURNS**
-
-        Returns the converted image if the conversion was successful,
+        
+        Returns the converted image if the conversion was successful, 
         otherwise None is returned.
-
+        
         **EXAMPLE**
-
+        
         >>> img = Image("lenna")
         >>> BGRImg = img.toBGR()
-
+        
         **SEE ALSO**
-
+        
         :py:meth:`isBGR`
-
         """
         retVal = self.getEmpty()
+        
         if( self._colorSpace == ColorSpace.RGB or
                 self._colorSpace == ColorSpace.UNKNOWN ):
             cv.CvtColor(self.getBitmap(), retVal, cv.CV_RGB2BGR)
-        elif( self._colorSpace == ColorSpace.HSV ):
+        elif self._colorSpace == ColorSpace.HSV:
             cv.CvtColor(self.getBitmap(), retVal, cv.CV_HSV2BGR)
-        elif( self._colorSpace == ColorSpace.HLS ):
+        elif self._colorSpace == ColorSpace.HLS:
             cv.CvtColor(self.getBitmap(), retVal, cv.CV_HLS2BGR)
-        elif( self._colorSpace == ColorSpace.XYZ ):
+        elif self._colorSpace == ColorSpace.XYZ:
             cv.CvtColor(self.getBitmap(), retVal, cv.CV_XYZ2BGR)
-        elif( self._colorSpace == ColorSpace.YCrCb ):
+        elif self._colorSpace == ColorSpace.YCrCb:
             cv.CvtColor(self.getBitmap(), retVal, cv.CV_YCrCb2BGR)
-        elif( self._colorSpace == ColorSpace.BGR ):
+        elif self._colorSpace == ColorSpace.BGR:
             retVal = self.getBitmap()
         else:
             logger.warning("Image.toBGR: There is no supported conversion to BGR colorspace")
@@ -1505,7 +1481,7 @@ class Image:
 
         **RETURNS**
 
-        Returns the converted image if the conversion was successful,
+        Returns the converted image if the conversion was successful, 
         otherwise None is returned.
 
         **EXAMPLE**
@@ -1523,18 +1499,18 @@ class Image:
         if( self._colorSpace == ColorSpace.BGR or
                 self._colorSpace == ColorSpace.UNKNOWN ):
             cv.CvtColor(self.getBitmap(), retVal, cv.CV_BGR2HLS)
-        elif( self._colorSpace == ColorSpace.RGB):
+        elif  self._colorSpace == ColorSpace.RGB:
             cv.CvtColor(self.getBitmap(), retVal, cv.CV_RGB2HLS)
-        elif( self._colorSpace == ColorSpace.HSV ):
+        elif self._colorSpace == ColorSpace.HSV:
             cv.CvtColor(self.getBitmap(), retVal, cv.CV_HSV2RGB)
             cv.CvtColor(retVal, retVal, cv.CV_RGB2HLS)
-        elif( self._colorSpace == ColorSpace.XYZ ):
+        elif self._colorSpace == ColorSpace.XYZ:
             cv.CvtColor(self.getBitmap(), retVal, cv.CV_XYZ2RGB)
             cv.CvtColor(retVal, retVal, cv.CV_RGB2HLS)
-        elif( self._colorSpace == ColorSpace.YCrCb ):
+        elif self._colorSpace == ColorSpace.YCrCb:
             cv.CvtColor(self.getBitmap(), retVal, cv.CV_YCrCb2RGB)
             cv.CvtColor(retVal, retVal, cv.CV_RGB2HLS)
-        elif( self._colorSpace == ColorSpace.HLS ):
+        elif self._colorSpace == ColorSpace.HLS:
             retVal = self.getBitmap()
         else:
             logger.warning("Image.toHSL: There is no supported conversion to HSL colorspace")
@@ -1551,7 +1527,7 @@ class Image:
 
         **RETURNS**
 
-        Returns the converted image if the conversion was successful,
+        Returns the converted image if the conversion was successful, 
         otherwise None is returned.
 
         **EXAMPLE**
@@ -1568,18 +1544,18 @@ class Image:
         if( self._colorSpace == ColorSpace.BGR or
                 self._colorSpace == ColorSpace.UNKNOWN ):
             cv.CvtColor(self.getBitmap(), retVal, cv.CV_BGR2HSV)
-        elif( self._colorSpace == ColorSpace.RGB):
+        elif  self._colorSpace == ColorSpace.RGB:
             cv.CvtColor(self.getBitmap(), retVal, cv.CV_RGB2HSV)
-        elif( self._colorSpace == ColorSpace.HLS ):
+        elif self._colorSpace == ColorSpace.HLS:
             cv.CvtColor(self.getBitmap(), retVal, cv.CV_HLS2RGB)
             cv.CvtColor(retVal, retVal, cv.CV_RGB2HSV)
-        elif( self._colorSpace == ColorSpace.XYZ ):
+        elif self._colorSpace == ColorSpace.XYZ:
             cv.CvtColor(self.getBitmap(), retVal, cv.CV_XYZ2RGB)
             cv.CvtColor(retVal, retVal, cv.CV_RGB2HSV)
-        elif( self._colorSpace == ColorSpace.YCrCb ):
+        elif self._colorSpace == ColorSpace.YCrCb:
             cv.CvtColor(self.getBitmap(), retVal, cv.CV_YCrCb2RGB)
             cv.CvtColor(retVal, retVal, cv.CV_RGB2HSV)
-        elif( self._colorSpace == ColorSpace.HSV ):
+        elif self._colorSpace == ColorSpace.HSV:
             retVal = self.getBitmap()
         else:
             logger.warning("Image.toHSV: There is no supported conversion to HSV colorspace")
@@ -1596,7 +1572,7 @@ class Image:
 
         **RETURNS**
 
-        Returns the converted image if the conversion was successful,
+        Returns the converted image if the conversion was successful, 
         otherwise None is returned.
 
         **EXAMPLE**
@@ -1614,18 +1590,18 @@ class Image:
         if( self._colorSpace == ColorSpace.BGR or
                 self._colorSpace == ColorSpace.UNKNOWN ):
             cv.CvtColor(self.getBitmap(), retVal, cv.CV_BGR2XYZ)
-        elif( self._colorSpace == ColorSpace.RGB):
+        elif  self._colorSpace == ColorSpace.RGB:
             cv.CvtColor(self.getBitmap(), retVal, cv.CV_RGB2XYZ)
-        elif( self._colorSpace == ColorSpace.HLS ):
+        elif self._colorSpace == ColorSpace.HLS:
             cv.CvtColor(self.getBitmap(), retVal, cv.CV_HLS2RGB)
             cv.CvtColor(retVal, retVal, cv.CV_RGB2XYZ)
-        elif( self._colorSpace == ColorSpace.HSV ):
+        elif self._colorSpace == ColorSpace.HSV:
             cv.CvtColor(self.getBitmap(), retVal, cv.CV_HSV2RGB)
             cv.CvtColor(retVal, retVal, cv.CV_RGB2XYZ)
-        elif( self._colorSpace == ColorSpace.YCrCb ):
+        elif self._colorSpace == ColorSpace.YCrCb:
             cv.CvtColor(self.getBitmap(), retVal, cv.CV_YCrCb2RGB)
             cv.CvtColor(retVal, retVal, cv.CV_RGB2XYZ)
-        elif( self._colorSpace == ColorSpace.XYZ ):
+        elif self._colorSpace == ColorSpace.XYZ:
             retVal = self.getBitmap()
         else:
             logger.warning("Image.toXYZ: There is no supported conversion to XYZ colorspace")
@@ -1661,21 +1637,21 @@ class Image:
         if( self._colorSpace == ColorSpace.BGR or
                 self._colorSpace == ColorSpace.UNKNOWN ):
             cv.CvtColor(self.getBitmap(), retVal, cv.CV_BGR2GRAY)
-        elif( self._colorSpace == ColorSpace.RGB):
+        elif  self._colorSpace == ColorSpace.RGB:
             cv.CvtColor(self.getBitmap(), retVal, cv.CV_RGB2GRAY)
-        elif( self._colorSpace == ColorSpace.HLS ):
+        elif self._colorSpace == ColorSpace.HLS:
             cv.CvtColor(self.getBitmap(), retVal, cv.CV_HLS2RGB)
             cv.CvtColor(retVal, retVal, cv.CV_RGB2GRAY)
-        elif( self._colorSpace == ColorSpace.HSV ):
+        elif self._colorSpace == ColorSpace.HSV:
             cv.CvtColor(self.getBitmap(), retVal, cv.CV_HSV2RGB)
             cv.CvtColor(retVal, retVal, cv.CV_RGB2GRAY)
-        elif( self._colorSpace == ColorSpace.XYZ ):
+        elif self._colorSpace == ColorSpace.XYZ:
             cv.CvtColor(self.getBitmap(), retVal, cv.CV_XYZ2RGB)
             cv.CvtColor(retVal, retVal, cv.CV_RGB2GRAY)
-        elif( self._colorSpace == ColorSpace.YCrCb ):
+        elif self._colorSpace == ColorSpace.YCrCb:
             cv.CvtColor(self.getBitmap(), retVal, cv.CV_YCrCb2RGB)
             cv.CvtColor(retVal, retVal, cv.CV_RGB2GRAY)
-        elif( self._colorSpace == ColorSpace.GRAY ):
+        elif self._colorSpace == ColorSpace.GRAY:
             retVal = self.getBitmap()
         else:
             logger.warning("Image.toGray: There is no supported conversion to gray colorspace")
@@ -1691,7 +1667,7 @@ class Image:
 
         **RETURNS**
 
-        Returns the converted image if the conversion was successful,
+        Returns the converted image if the conversion was successful, 
         otherwise None is returned.
 
         **EXAMPLE**
@@ -1709,18 +1685,18 @@ class Image:
         if( self._colorSpace == ColorSpace.BGR or
                 self._colorSpace == ColorSpace.UNKNOWN ):
             cv.CvtColor(self.getBitmap(), retVal, cv.CV_BGR2YCrCb)
-        elif( self._colorSpace == ColorSpace.RGB ):
+        elif self._colorSpace == ColorSpace.RGB:
             cv.CvtColor(self.getBitmap(), retVal, cv.CV_RGB2YCrCb)
-        elif( self._colorSpace == ColorSpace.HSV ):
+        elif self._colorSpace == ColorSpace.HSV:
             cv.CvtColor(self.getBitmap(), retVal, cv.CV_HSV2RGB)
             cv.CvtColor(retVal, retVal, cv.CV_RGB2YCrCb)
-        elif( self._colorSpace == ColorSpace.HLS ):
+        elif self._colorSpace == ColorSpace.HLS:
             cv.CvtColor(self.getBitmap(), retVal, cv.CV_HLS2RGB)
             cv.CvtColor(retVal, retVal, cv.CV_RGB2YCrCb)
-        elif( self._colorSpace == ColorSpace.XYZ ):
+        elif self._colorSpace == ColorSpace.XYZ:
             cv.CvtColor(self.getBitmap(), retVal, cv.CV_XYZ2RGB)
             cv.CvtColor(retVal, retVal, cv.CV_RGB2YCrCb)
-        elif( self._colorSpace == ColorSpace.YCrCb ):
+        elif self._colorSpace == ColorSpace.YCrCb:
             retVal = self.getBitmap()
         else:
             logger.warning("Image.toYCrCb: There is no supported conversion to YCrCb colorspace")
@@ -1749,7 +1725,7 @@ class Image:
 
         >>> img = Image("lenna")
         >>> rawImg  = img.getEmpty()
-        >>> cv.SomeOpenCVFunc(img.getBitmap(),rawImg)
+        >>> cv.SomeOpenCVFunc(img.getBitmap(), rawImg)
 
         **SEE ALSO**
 
@@ -1782,7 +1758,7 @@ class Image:
         >>> img = Image("lenna")
         >>> rawImg  = img.getBitmap()
         >>> rawOut  = img.getEmpty()
-        >>> cv.SomeOpenCVFunc(rawImg,rawOut)
+        >>> cv.SomeOpenCVFunc(rawImg, rawOut)
 
         **SEE ALSO**
 
@@ -1816,7 +1792,7 @@ class Image:
         >>> img = Image("lenna")
         >>> rawImg  = img.getMatrix()
         >>> rawOut  = img.getEmpty()
-        >>> cv.SomeOpenCVFunc(rawImg,rawOut)
+        >>> cv.SomeOpenCVFunc(rawImg, rawOut)
 
         **SEE ALSO**
 
@@ -1853,7 +1829,7 @@ class Image:
         >>> img = Image("lenna")
         >>> rawImg  = img.getFPMatrix()
         >>> rawOut  = img.getEmpty()
-        >>> cv.SomeOpenCVFunc(rawImg,rawOut)
+        >>> cv.SomeOpenCVFunc(rawImg, rawOut)
 
         **SEE ALSO**
 
@@ -1866,30 +1842,28 @@ class Image:
         :py:meth:`getGrayscaleMatrix`
 
         """
-        retVal =  cv.CreateImage((self.width,self.height), cv.IPL_DEPTH_32F, 3)
-        cv.Convert(self.getBitmap(),retVal)
+        retVal =  cv.CreateImage((self.width, self.height), cv.IPL_DEPTH_32F, 3)
+        cv.Convert(self.getBitmap(), retVal)
         return retVal
-
+    
     def getPIL(self):
         """
         **SUMMARY**
-
+        
         Get a PIL Image object for use with the Python Image Library
         This is handy for some PIL functions.
-
-
+        
         **RETURNS**
-
+        
         Returns the Python Imaging Library (PIL) version of this image.
-
+        
         **EXAMPLE**
-
+        
         >>> img = Image("lenna")
         >>> rawImg  = img.getPIL()
-
-
+        
         **SEE ALSO**
-
+        
         :py:meth:`getEmpty`
         :py:meth:`getBitmap`
         :py:meth:`getMatrix`
@@ -1897,34 +1871,35 @@ class Image:
         :py:meth:`getNumpy`
         :py:meth:`getGrayNumpy`
         :py:meth:`getGrayscaleMatrix`
-
+        
         """
-        if (not PIL_ENABLED):
+        if(not PIL_ENABLED):
             return None
-        if (not self._pil):
+        
+        if(not self._pil):
             rgbbitmap = self.getEmpty()
             cv.CvtColor(self.getBitmap(), rgbbitmap, cv.CV_BGR2RGB)
             self._pil = pil.fromstring("RGB", self.size(), rgbbitmap.tostring())
+        
         return self._pil
-
-
+    
     def getGrayNumpy(self):
         """
         **SUMMARY**
-
+        
         Return a grayscale Numpy array of the image.
-
+        
         **RETURNS**
-
+        
         Returns the image, converted first to grayscale and then converted to a 2D numpy array.
-
+        
         **EXAMPLE**
-
+        
         >>> img = Image("lenna")
         >>> rawImg  = img.getGrayNumpy()
-
+        
         **SEE ALSO**
-
+        
         :py:meth:`getEmpty`
         :py:meth:`getBitmap`
         :py:meth:`getMatrix`
@@ -1932,65 +1907,64 @@ class Image:
         :py:meth:`getNumpy`
         :py:meth:`getGrayNumpy`
         :py:meth:`getGrayscaleMatrix`
-
         """
-        if( self._grayNumpy != "" ):
+        if(self._grayNumpy != ""):
             return self._grayNumpy
+        
         else:
             self._grayNumpy = uint8(np.array(cv.GetMat(self._getGrayscaleBitmap())).transpose())
-
+        
         return self._grayNumpy
-
+    
     def getNumpy(self):
         """
         **SUMMARY**
-
+        
         Get a Numpy array of the image in width x height x RGB dimensions
-
+        
         **RETURNS**
-
+        
         Returns the image, converted first to grayscale and then converted to a 3D numpy array.
-
+        
         **EXAMPLE**
-
+        
         >>> img = Image("lenna")
         >>> rawImg  = img.getNumpy()
-
+        
         **SEE ALSO**
-
+        
         :py:meth:`getEmpty`
         :py:meth:`getBitmap`
         :py:meth:`getMatrix`
         :py:meth:`getPIL`
         :py:meth:`getGrayNumpy`
         :py:meth:`getGrayscaleMatrix`
-
         """
-
+        
         if self._numpy != "":
             return self._numpy
-
-
+        
         self._numpy = np.array(self.getMatrix())[:, :, ::-1].transpose([1, 0, 2])
+        
         return self._numpy
-
+    
     def getNumpyCv2(self):
         """
         **SUMMARY**
-
+        
         Get a Numpy array of the image in width x height x RGB dimensions compatible with OpenCV >= 2.3
-
+        
         **RETURNS**
-
-        Returns the  3D numpy array of the image compatible with OpenCV >= 2.3
-
+        
+        Returns the 3D numpy array of the image compatible with OpenCV >= 2.3
+        
         **EXAMPLE**
-
+        
         >>> img = Image("lenna")
         >>> rawImg  = img.getNumpyCv2()
-
+        
         **SEE ALSO**
-
+        
         :py:meth:`getEmpty`
         :py:meth:`getBitmap`
         :py:meth:`getMatrix`
@@ -1999,30 +1973,29 @@ class Image:
         :py:meth:`getGrayscaleMatrix`
         :py:meth:`getNumpy`
         :py:meth:`getGrayNumpyCv2`
-
         """
-
         if type(self._cv2Numpy) is not np.ndarray:
             self._cv2Numpy = np.array(self.getMatrix())
+        
         return self._cv2Numpy
-
+    
     def getGrayNumpyCv2(self):
         """
         **SUMMARY**
-
+        
         Get a Grayscale Numpy array of the image in width x height y compatible with OpenCV >= 2.3
-
+        
         **RETURNS**
-
+        
         Returns the grayscale numpy array compatible with OpenCV >= 2.3
-
+        
         **EXAMPLE**
-
+        
         >>> img = Image("lenna")
         >>> rawImg  = img.getNumpyCv2()
-
+        
         **SEE ALSO**
-
+        
         :py:meth:`getEmpty`
         :py:meth:`getBitmap`
         :py:meth:`getMatrix`
@@ -2031,34 +2004,33 @@ class Image:
         :py:meth:`getGrayscaleMatrix`
         :py:meth:`getNumpy`
         :py:meth:`getGrayNumpyCv2`
-
         """
         if type(self._cv2GrayNumpy) is not np.ndarray:
             self._cv2GrayNumpy = np.array(self.getGrayscaleMatrix())
+        
         return self._cv2GrayNumpy
-
+    
     def _getGrayscaleBitmap(self):
         if (self._graybitmap):
             return self._graybitmap
-
-
+        
         self._graybitmap = self.getEmpty(1)
         temp = self.getEmpty(3)
-        if( self._colorSpace == ColorSpace.BGR or
-                self._colorSpace == ColorSpace.UNKNOWN ):
+        
+        if(self._colorSpace == ColorSpace.BGR or self._colorSpace == ColorSpace.UNKNOWN):
             cv.CvtColor(self.getBitmap(), self._graybitmap, cv.CV_BGR2GRAY)
-        elif( self._colorSpace == ColorSpace.RGB):
+        elif  self._colorSpace == ColorSpace.RGB:
             cv.CvtColor(self.getBitmap(), self._graybitmap, cv.CV_RGB2GRAY)
-        elif( self._colorSpace == ColorSpace.HLS ):
+        elif self._colorSpace == ColorSpace.HLS:
             cv.CvtColor(self.getBitmap(), temp, cv.CV_HLS2RGB)
             cv.CvtColor(temp, self._graybitmap, cv.CV_RGB2GRAY)
-        elif( self._colorSpace == ColorSpace.HSV ):
+        elif self._colorSpace == ColorSpace.HSV:
             cv.CvtColor(self.getBitmap(), temp, cv.CV_HSV2RGB)
             cv.CvtColor(temp, self._graybitmap, cv.CV_RGB2GRAY)
-        elif( self._colorSpace == ColorSpace.XYZ ):
+        elif self._colorSpace == ColorSpace.XYZ:
             cv.CvtColor(self.getBitmap(), retVal, cv.CV_XYZ2RGB)
             cv.CvtColor(temp, self._graybitmap, cv.CV_RGB2GRAY)
-        elif( self._colorSpace == ColorSpace.GRAY):
+        elif  self._colorSpace == ColorSpace.GRAY:
             cv.Split(self.getBitmap(), self._graybitmap, self._graybitmap, self._graybitmap, None)
         else:
             logger.warning("Image._getGrayscaleBitmap: There is no supported conversion to gray colorspace")
@@ -2081,7 +2053,7 @@ class Image:
         >>> img = Image("lenna")
         >>> rawImg  = img.getGrayscaleMatrix()
         >>> rawOut  = img.getEmpty()
-        >>> cv.SomeOpenCVFunc(rawImg,rawOut)
+        >>> cv.SomeOpenCVFunc(rawImg, rawOut)
 
         **SEE ALSO**
 
@@ -2168,14 +2140,14 @@ class Image:
         return self.toRGB().getBitmap().tostring()
 
 
-    def save(self, filehandle_or_filename="", mode="", verbose=False, temp=False, path=None, filename=None, cleanTemp=False ,**params):
+    def save(self, filehandle_or_filename="", mode="", verbose=False, temp=False, path=None, filename=None, cleanTemp=False, **params):
         """
         **SUMMARY**
 
         Save the image to the specified filename.  If no filename is provided then
         then it will use the filename the Image was loaded from or the last
         place it was saved to. You can save to lots of places, not just files.
-        For example you can save to the Display, a JpegStream, VideoStream,
+        For example you can save to the Display, a JpegStream, VideoStream, 
         temporary file, or Ipython Notebook.
 
 
@@ -2238,14 +2210,14 @@ class Image:
                 path=tempfile.gettempdir()
             if glob.os.path.exists(path):
                 path = glob.os.path.abspath(path)
-                imagefiles = glob.glob(glob.os.path.join(path,filename+"*.png"))
+                imagefiles = glob.glob(glob.os.path.join(path, filename+"*.png"))
                 num = [0]
                 for img in imagefiles :
-                    num.append(int(glob.re.findall('[0-9]+$',img[:-4])[-1]))
+                    num.append(int(glob.re.findall('[0-9]+$', img[:-4])[-1]))
                 num.sort()
                 fnum = num[-1]+1
-                filename = glob.os.path.join(path,filename+("%07d" % fnum)+".png")
-                self._tempFiles.append((filename,cleanTemp))
+                filename = glob.os.path.join(path, filename+("%07d" % fnum)+".png")
+                self._tempFiles.append((filename, cleanTemp))
                 self.save(self._tempFiles[-1][0])
                 return self._tempFiles[-1][0]
             else :
@@ -2361,7 +2333,7 @@ class Image:
 
 
                 image = BitmapHandler(
-                    PNG_BITMAP_DATA, BitmapHandler.RGB,
+                    PNG_BITMAP_DATA, BitmapHandler.RGB, 
                     IMAGE_WIDTH, IMAGE_HEIGHT, IMAGE_WIDTH * 3
                 )
                 result = webmEncode.EncodeRGB(image)
@@ -2372,7 +2344,7 @@ class Image:
                   file(filename.format("RGB"), "wb").write(result.data)
                 return 1
         #if the user is passing kwargs use the PIL save method.
-        if( params ): #usually this is just the compression rate for the image
+        if params: #usually this is just the compression rate for the image
             if (not mode):
                 mode = "jpeg"
             saveimg.getPIL().save(filename, mode, **params)
@@ -2418,7 +2390,7 @@ class Image:
         cv.Copy(self.getBitmap(), newimg)
         return Image(newimg, colorSpace=self._colorSpace)
 
-    def upload(self,dest,api_key=None,api_secret=None, verbose = True):
+    def upload(self, dest, api_key=None, api_secret=None, verbose = True):
         """
         **SUMMARY**
         
@@ -2445,19 +2417,19 @@ class Image:
         TO upload image to imgur::
           
           >>> img = Image("lenna")
-          >>> result = img.upload( 'imgur',"MY_API_KEY1234567890" )
+          >>> result = img.upload( 'imgur', "MY_API_KEY1234567890" )
           >>> print "Uploaded To: " + result[0]
           
 
         To upload image to flickr::
           
-          >>> img.upload('flickr','api_key','api_secret')
+          >>> img.upload('flickr', 'api_key', 'api_secret')
           >>> img.invert().upload('flickr') #Once the api keys and secret keys are cached.
           
 
         To upload image to dropbox::
           
-          >>> img.upload('dropbox','api_key','api_secret')
+          >>> img.upload('dropbox', 'api_key', 'api_secret')
           >>> img.invert().upload('dropbox') #Once the api keys and secret keys are cached.
           
 
@@ -2488,7 +2460,7 @@ class Image:
 
             response = StringIO()
             c = pycurl.Curl()
-            values = [("key", api_key),
+            values = [("key", api_key), 
                       ("image", (c.FORM_FILE, self.filename))]
             c.setopt(c.URL, "http://api.imgur.com/2/upload.xml")
             c.setopt(c.HTTPPOST, values)
@@ -2496,13 +2468,13 @@ class Image:
             c.perform()
             c.close()
 
-            match = re.search(r'<hash>(\w+).*?<deletehash>(\w+).*?<original>(http://[\w.]+/[\w.]+)', response.getvalue() , re.DOTALL)
+            match = re.search(r'<hash>(\w+).*?<deletehash>(\w+).*?<original>(http://[\w.]+/[\w.]+)', response.getvalue(), re.DOTALL)
             if match:
                 if(verbose):
                     print "Imgur page: http://imgur.com/" + match.group(1)
                     print "Original image: " + match.group(3)
                     print "Delete page: http://imgur.com/delete/" + match.group(2)
-                return [match.group(1),match.group(3),match.group(2)]
+                return [match.group(1), match.group(3), match.group(2)]
             else :
                 if(verbose):
                     print "The API Key given is not valid"
@@ -2518,13 +2490,13 @@ class Image:
                 return False
             try :
                 if (not(api_key==None and api_secret==None)):
-                    self.flickr = flickrapi.FlickrAPI(api_key,api_secret,cache=True)
+                    self.flickr = flickrapi.FlickrAPI(api_key, api_secret, cache=True)
                     self.flickr.cache = flickrapi.SimpleCache(timeout=3600, max_entries=200)
                     self.flickr.authenticate_console('write')
-                    temp_token = (api_key,api_secret)
+                    temp_token = (api_key, api_secret)
                 else :
                     try :
-                        self.flickr = flickrapi.FlickrAPI(temp_token[0],temp_token[1],cache=True)
+                        self.flickr = flickrapi.FlickrAPI(temp_token[0], temp_token[1], cache=True)
                         self.flickr.authenticate_console('write')
                     except NameError :
                         print "API key and Secret key are not set."
@@ -2534,13 +2506,13 @@ class Image:
                 return False
             if (self.filename) :
                 try :
-                    self.flickr.upload(self.filename,self.filehandle)
+                    self.flickr.upload(self.filename, self.filehandle)
                 except :
                     print "Uploading Failed !"
                     return False
             else :
                 tf = self.save(temp=True)
-                self.flickr.upload(tf,"Image")
+                self.flickr.upload(tf, "Image")
             return True
 
         elif (dest=='dropbox'):
@@ -2621,16 +2593,16 @@ class Image:
         if height == -1:
             w = int(self.width * width)
             h = int(self.height * width)
-            if( w > MAX_DIMENSION or h > MAX_DIMENSION or h < 1 or w < 1 ):
+            if w > MAX_DIMENSION or h > MAX_DIMENSION or h < 1 or w < 1:
                 logger.warning("Holy Heck! You tried to make an image really big or impossibly small. I can't scale that")
                 return self
 
-        scaledArray = np.zeros((w,h,3),dtype='uint8')
-        retVal = cv2.resize(self.getNumpyCv2(), (w,h), interpolation = interpolation)
-        return Image(retVal, colorSpace=self._colorSpace,cv2image = True)
+        scaledArray = np.zeros((w, h, 3), dtype='uint8')
+        retVal = cv2.resize(self.getNumpyCv2(), (w, h), interpolation = interpolation)
+        return Image(retVal, colorSpace=self._colorSpace, cv2image = True)
 
 
-    def resize(self, w=None,h=None):
+    def resize(self, w=None, h=None):
         """
         **SUMMARY**
 
@@ -2654,20 +2626,20 @@ class Image:
         >>> img = Image("lenna")
         >>> img2 = img.resize(w=1024) # h is guessed from w
         >>> img3 = img.resize(h=1024) # w is guessed from h
-        >>> img4 = img.resize(w=200,h=100)
+        >>> img4 = img.resize(w=200, h=100)
 
         """
         retVal = None
-        if( w is None and h is None ):
+        if w is None and h is None:
             logger.warning("Image.resize has no parameters. No operation is performed")
             return None
-        elif( w is not None and h is None):
+        elif  w is not None and h is None:
             sfactor = float(w)/float(self.width)
             h = int( sfactor*float(self.height) )
-        elif( w is None and h is not None):
+        elif  w is None and h is not None:
             sfactor = float(h)/float(self.height)
             w = int( sfactor*float(self.width) )
-        if( w > MAX_DIMENSION or h > MAX_DIMENSION ):
+        if w > MAX_DIMENSION or h > MAX_DIMENSION:
             logger.warning("Image.resize Holy Heck! You tried to make an image really big or impossibly small. I can't scale that")
             return retVal
         scaled_bitmap = cv.CreateImage((w, h), 8, 3)
@@ -2675,11 +2647,11 @@ class Image:
         return Image(scaled_bitmap, colorSpace=self._colorSpace)
 
 
-    def smooth(self, algorithm_name='gaussian', aperture=(3,3), sigma=0, spatial_sigma=0, grayscale=False, aperature=None):
+    def smooth(self, algorithm_name='gaussian', aperture=(3, 3), sigma=0, spatial_sigma=0, grayscale=False, aperature=None):
         """
         **SUMMARY**
 
-        Smooth the image, by default with the Gaussian blur.  If desired,
+        Smooth the image, by default with the Gaussian blur.  If desired, 
         additional algorithms and apertures can be specified.  Optional parameters
         are passed directly to OpenCV's cv.Smooth() function.
 
@@ -2702,8 +2674,8 @@ class Image:
 
           * `Bilateral Filter <http://en.wikipedia.org/wiki/Bilateral_filter>`_
 
-        * *aperture* - A tuple for the aperture of the gaussian blur as an (x,y) tuple.
-                     - Note there was rampant spelling mistakes in both smooth & sobel,
+        * *aperture* - A tuple for the aperture of the gaussian blur as an (x, y) tuple.
+                     - Note there was rampant spelling mistakes in both smooth & sobel, 
                        aperture is spelled as such, and not "aperature". This code is backwards
                        compatible.
 
@@ -2741,7 +2713,7 @@ class Image:
         if is_tuple(aperture):
             win_x, win_y = aperture
             if win_x <= 0 or win_y <= 0 or win_x % 2 == 0 or win_y % 2 == 0:
-                logger.warning("The aperture (x,y) must be odd number and greater than 0.")
+                logger.warning("The aperture (x, y) must be odd number and greater than 0.")
                 return None
         else:
             raise ValueError("Please provide a tuple to aperture, got: %s" % type(aperture))
@@ -2775,12 +2747,12 @@ class Image:
             cv.Smooth(r, ro, algorithm, win_x, win_y, sigma, spatial_sigma)
             cv.Smooth(g, go, algorithm, win_x, win_y, sigma, spatial_sigma)
             cv.Smooth(b, bo, algorithm, win_x, win_y, sigma, spatial_sigma)
-            cv.Merge(bo,go,ro, None, newimg)
+            cv.Merge(bo, go, ro, None, newimg)
 
         return Image(newimg, colorSpace=self._colorSpace)
 
 
-    def medianFilter(self, window='',grayscale=False):
+    def medianFilter(self, window='', grayscale=False):
         """
         **SUMMARY**
 
@@ -2790,7 +2762,7 @@ class Image:
 
         **Parameters**
         
-        * *window* - should be in the form a tuple (win_x,win_y). Where win_x should be equal to win_y. By default it is set to 3x3, i.e window = (3x3).
+        * *window* - should be in the form a tuple (win_x, win_y). Where win_x should be equal to win_y. By default it is set to 3x3, i.e window = (3x3).
         
         **Note**
         
@@ -2817,28 +2789,28 @@ class Image:
                 if win_x != win_y :
                     win_x=win_y
             else :
-                logger.warning("The aperture (win_x,win_y) must be odd number and greater than 0.")
+                logger.warning("The aperture (win_x, win_y) must be odd number and greater than 0.")
                 return None
 
-        elif( is_number(window) ):
+        elif is_number(window):
             win_x = window
         else :
             win_x = 3 #set the default aperture window size (3x3)
 
         if ( not new_version ) :
             grayscale_ = grayscale
-            return self.smooth(algorithm_name='median', aperture=(win_x,win_y),grayscale=grayscale_)
+            return self.smooth(algorithm_name='median', aperture=(win_x, win_y), grayscale=grayscale_)
         else :
             if (grayscale) :
-                img_medianBlur = cv2.medianBlur(self.getGrayNumpy(),win_x)
+                img_medianBlur = cv2.medianBlur(self.getGrayNumpy(), win_x)
                 return Image(img_medianBlur, colorSpace=ColorSpace.GRAY)
             else :
-                img_medianBlur = cv2.medianBlur(self.getNumpy()[:,:, ::-1].transpose([1,0,2]),win_x)
-                img_medianBlur = img_medianBlur[:,:, ::-1].transpose([1,0,2])
+                img_medianBlur = cv2.medianBlur(self.getNumpy()[:, :, ::-1].transpose([1, 0, 2]), win_x)
+                img_medianBlur = img_medianBlur[:, :, ::-1].transpose([1, 0, 2])
                 return Image(img_medianBlur, colorSpace=self._colorSpace)
 
 
-    def bilateralFilter(self, diameter=5,sigmaColor=10, sigmaSpace=10,grayscale=False):
+    def bilateralFilter(self, diameter=5, sigmaColor=10, sigmaSpace=10, grayscale=False):
         """
         **SUMMARY**
 
@@ -2851,7 +2823,7 @@ class Image:
 
         **Parameters**
 
-        * *diameter* - A tuple for the window of the form (diameter,diameter). By default window = (3x3). ( for OpenCV versions <= 2.3.0)
+        * *diameter* - A tuple for the window of the form (diameter, diameter). By default window = (3x3). ( for OpenCV versions <= 2.3.0)
                      - Diameter of each pixel neighborhood that is used during filtering. ( for OpenCV versions >= 2.3.0)
 
 
@@ -2862,7 +2834,7 @@ class Image:
         **NOTE**
         For OpenCV versions <= 2.3.0
         -- this acts as Convience function derived from the :py:meth:`smooth` method. Which internally calls cv.Smooth.
-        -- where aperture(window) is (diameter,diameter)
+        -- where aperture(window) is (diameter, diameter)
         -- sigmaColor and sigmanSpace become obsolete
 
         For OpenCV versions higher than 2.3.0. i.e >= 2.3.0
@@ -2883,29 +2855,29 @@ class Image:
                 if win_x != win_y :
                     diameter = (win_x, win_y)
             else :
-                logger.warning("The aperture (win_x,win_y) must be odd number and greater than 0.")
+                logger.warning("The aperture (win_x, win_y) must be odd number and greater than 0.")
                 return None
 
-        elif( is_number(diameter) ):
+        elif is_number(diameter):
             pass
 
         else :
             win_x = 3 #set the default aperture window size (3x3)
-            diameter = (win_x,win_x)
+            diameter = (win_x, win_x)
 
         if ( not new_version ) :
             grayscale_ = grayscale
             if( is_number(diameter) ) :
-                diameter = (diameter,diameter)
-            return self.smooth(algorithm_name='bilateral', aperture=diameter,grayscale=grayscale_)
+                diameter = (diameter, diameter)
+            return self.smooth(algorithm_name='bilateral', aperture=diameter, grayscale=grayscale_)
         else :
             if (grayscale) :
-                img_bilateral = cv2.bilateralFilter(self.getGrayNumpy(),diameter,sigmaColor, sigmaSpace)
+                img_bilateral = cv2.bilateralFilter(self.getGrayNumpy(), diameter, sigmaColor, sigmaSpace)
                 return Image(img_bilateral, colorSpace=ColorSpace.GRAY)
             else :
-                img_bilateral = cv2.bilateralFilter(self.getNumpy()[:,:, ::-1].transpose([1,0,2]),diameter,sigmaColor, sigmaSpace)
-                img_bilateral = img_bilateral[:,:, ::-1].transpose([1,0,2])
-                return Image(img_bilateral,colorSpace=self._colorSpace)
+                img_bilateral = cv2.bilateralFilter(self.getNumpy()[:, :, ::-1].transpose([1, 0, 2]), diameter, sigmaColor, sigmaSpace)
+                img_bilateral = img_bilateral[:, :, ::-1].transpose([1, 0, 2])
+                return Image(img_bilateral, colorSpace=self._colorSpace)
 
     def blur(self, window = '', grayscale=False):
         """
@@ -2918,7 +2890,7 @@ class Image:
 
         **Parameters**
 
-        * *window* - should be in the form a tuple (win_x,win_y).
+        * *window* - should be in the form a tuple (win_x, win_y).
                    - By default it is set to 3x3, i.e window = (3x3).
 
         **NOTE**
@@ -2940,24 +2912,24 @@ class Image:
             if ( win_x<=0 or win_y<=0 ) :
                 logger.warning("win_x and win_y should be greater than 0.")
                 return None
-        elif( is_number(window) ):
-            window = (window,window)
+        elif is_number(window):
+            window = (window, window)
         else :
-            window = (3,3)
+            window = (3, 3)
 
         if ( not new_version ) :
             grayscale_ = grayscale
             return self.smooth(algorithm_name='blur', aperture=window, grayscale=grayscale_)
         else :
             if grayscale:
-                img_blur = cv2.blur(self.getGrayNumpy(),window)
-                return Image(img_blur,colorSpace=ColorSpace.GRAY)
+                img_blur = cv2.blur(self.getGrayNumpy(), window)
+                return Image(img_blur, colorSpace=ColorSpace.GRAY)
             else :
-                img_blur = cv2.blur(self.getNumpy()[:,:, ::-1].transpose([1,0,2]),window)
-                img_blur = img_blur[:,:, ::-1].transpose([1,0,2])
-                return Image(img_blur,colorSpace=self._colorSpace)
+                img_blur = cv2.blur(self.getNumpy()[:, :, ::-1].transpose([1, 0, 2]), window)
+                img_blur = img_blur[:, :, ::-1].transpose([1, 0, 2])
+                return Image(img_blur, colorSpace=self._colorSpace)
 
-    def gaussianBlur(self, window = '', sigmaX=0 , sigmaY=0 ,grayscale=False):
+    def gaussianBlur(self, window = '', sigmaX=0, sigmaY=0, grayscale=False):
         """
         **SUMMARY**
 
@@ -2968,7 +2940,7 @@ class Image:
 
         **Parameters**
 
-        * *window* - should be in the form a tuple (win_x,win_y). Where win_x and win_y should be positive and odd.
+        * *window* - should be in the form a tuple (win_x, win_y). Where win_x and win_y should be positive and odd.
                    - By default it is set to 3x3, i.e window = (3x3).
 
         * *sigmaX* - Gaussian kernel standard deviation in X direction.
@@ -2990,7 +2962,7 @@ class Image:
             new_version = False
             #For OpenCV versions till 2.4.0,  cv2.__versions__ are of the form "$Rev: 4557 $"
             if not ver.startswith('$Rev:'):
-                if int(ver.replace('.','0'))>=20300 :
+                if int(ver.replace('.', '0'))>=20300 :
                     new_version = True
         except :
             new_version = False
@@ -3001,14 +2973,14 @@ class Image:
             if ( win_x>=0 and win_y>=0 and win_x%2==1 and win_y%2==1 ) :
                 pass
             else :
-                logger.warning("The aperture (win_x,win_y) must be odd number and greater than 0.")
+                logger.warning("The aperture (win_x, win_y) must be odd number and greater than 0.")
                 return None
 
         elif (is_number(window)):
             window = (window, window)
 
         else:
-            window = (3,3) #set the default aperture window size (3x3)
+            window = (3, 3) #set the default aperture window size (3x3)
 
         if (not new_version):
             grayscale_ = grayscale
@@ -3224,7 +3196,7 @@ class Image:
 
         **PARAMETERS**
 
-        * *thresh* - the threshold as an integer or an (r,g,b) tuple , where pixels below (darker) than thresh are set to to max value,
+        * *thresh* - the threshold as an integer or an (r, g, b) tuple, where pixels below (darker) than thresh are set to to max value, 
           and all values above this value are set to black. If this parameter is -1 we use Otsu's method.
 
         * *maxv* - The maximum value for pixels below the threshold. Ordinarily this should be 255 (white)
@@ -3247,7 +3219,7 @@ class Image:
 
         >>> img = Image("orson_welles.jpg")
         >>> b1 = img.binarize(128)
-        >>> b2 = img.binarize(blocksize=11,p=7)
+        >>> b2 = img.binarize(blocksize=11, p=7)
         >>> b3 = b1.sideBySide(b2)
         >>> b3.show()
 
@@ -3287,7 +3259,7 @@ class Image:
         elif thresh == -1:
             newbitmap = self.getEmpty(1)
             if blocksize:
-                cv.AdaptiveThreshold(self._getGrayscaleBitmap(), newbitmap, maxv,
+                cv.AdaptiveThreshold(self._getGrayscaleBitmap(), newbitmap, maxv, 
                     cv.CV_ADAPTIVE_THRESH_GAUSSIAN_C, cv.CV_THRESH_BINARY_INV, blocksize, p)
             else:
                 cv.Threshold(self._getGrayscaleBitmap(), newbitmap, thresh, float(maxv), cv.CV_THRESH_BINARY_INV + cv.CV_THRESH_OTSU)
@@ -3306,23 +3278,23 @@ class Image:
         **SUMMARY**
 
         This method finds the average color of all the pixels in the image and displays tuple in the colorspace specfied by the user.
-        If no colorspace is specified , (B,G,R) colorspace is taken as default.
+        If no colorspace is specified, (B, G, R) colorspace is taken as default.
 
         **RETURNS**
 
-        A tuple of the average image values. Tuples are in the channel order. *For most images this means the results are (B,G,R).*
+        A tuple of the average image values. Tuples are in the channel order. *For most images this means the results are (B, G, R).*
 
         **EXAMPLE**
 
         >>> img = Image('lenna')
         >>> colors = img.meanColor()        # returns tuple in Image's colorspace format.
-        >>> colors = img.meanColor('BGR')   # returns tuple in (B,G,R) format.
-        >>> colors = img.meanColor('RGB')   # returns tuple in (R,G,B) format.
-        >>> colors = img.meanColor('HSV')   # returns tuple in (H,S,V) format.
-        >>> colors = img.meanColor('XYZ')   # returns tuple in (X,Y,Z) format.
+        >>> colors = img.meanColor('BGR')   # returns tuple in (B, G, R) format.
+        >>> colors = img.meanColor('RGB')   # returns tuple in (R, G, B) format.
+        >>> colors = img.meanColor('HSV')   # returns tuple in (H, S, V) format.
+        >>> colors = img.meanColor('XYZ')   # returns tuple in (X, Y, Z) format.
         >>> colors = img.meanColor('Gray')  # returns float of mean intensity.
-        >>> colors = img.meanColor('YCrCb') # returns tuple in (Y,Cr,Cb) format.
-        >>> colors = img.meanColor('HLS')   # returns tuple in (H,L,S) format.
+        >>> colors = img.meanColor('YCrCb') # returns tuple in (Y, Cr, Cb) format.
+        >>> colors = img.meanColor('HLS')   # returns tuple in (H, L, S) format.
         
          
         """
@@ -3352,7 +3324,7 @@ class Image:
             return tuple(cv.Avg(self.toHLS().getBitmap())[0:3])
 
         else:
-            logger.warning("Image.meanColor: There is no supported conversion to the specified colorspace. Use one of these as argument: 'BGR' , 'RGB' , 'HSV' , 'Gray' , 'XYZ' , 'YCrCb' , 'HLS' .")
+            logger.warning("Image.meanColor: There is no supported conversion to the specified colorspace. Use one of these as argument: 'BGR', 'RGB', 'HSV', 'Gray', 'XYZ', 'YCrCb', 'HLS' .")
             return None
 			
         
@@ -3419,7 +3391,7 @@ class Image:
         return FeatureSet(corner_features)
 
 
-    def findBlobs(self, threshval = -1, minsize=10, maxsize=0, threshblocksize=0, threshconstant=5,appx_level=3):
+    def findBlobs(self, threshval = -1, minsize=10, maxsize=0, threshblocksize=0, threshconstant=5, appx_level=3):
         """
         
         **SUMMARY**
@@ -3434,7 +3406,7 @@ class Image:
 
         **PARAMETERS**
 
-        * *threshval* - the threshold as an integer or an (r,g,b) tuple , where pixels below (darker) than thresh are set to to max value,
+        * *threshval* - the threshold as an integer or an (r, g, b) tuple, where pixels below (darker) than thresh are set to to max value, 
           and all values above this value are set to black. If this parameter is -1 we use Otsu's method.
 
         * *minsize* - the minimum size of the blobs, in pixels, of the returned blobs. This helps to filter out noise.
@@ -3460,15 +3432,15 @@ class Image:
 
         >>> img = Image("lenna")
         >>> fs = img.findBlobs()
-        >>> if( fs is not None ):
+        >>> if fs is not None:
         >>>     fs.draw()
 
         **NOTES**
 
         .. Warning::
           For blobs that live right on the edge of the image OpenCV reports the position and width
-          height as being one over for the true position. E.g. if a blob is at (0,0) OpenCV reports
-          its position as (1,1). Likewise the width and height for the other corners is reported as
+          height as being one over for the true position. E.g. if a blob is at (0, 0) OpenCV reports
+          its position as (1, 1). Likewise the width and height for the other corners is reported as
           being one less than the width and height. This is a known bug.
 
         **SEE ALSO**
@@ -3485,15 +3457,15 @@ class Image:
         #create a single channel image, thresholded to parameters
 
         blobmaker = BlobMaker()
-        blobs = blobmaker.extractFromBinary(self.binarize(threshval, 255, threshblocksize, threshconstant).invert(),
-            self, minsize = minsize, maxsize = maxsize,appx_level=appx_level)
+        blobs = blobmaker.extractFromBinary(self.binarize(threshval, 255, threshblocksize, threshconstant).invert(), 
+            self, minsize = minsize, maxsize = maxsize, appx_level=appx_level)
 
         if not len(blobs):
             return None
 
         return FeatureSet(blobs).sortArea()
 
-    def findSkintoneBlobs(self, minsize=10, maxsize=0,dilate_iter=1):
+    def findSkintoneBlobs(self, minsize=10, maxsize=0, dilate_iter=1):
         """
         **SUMMARY**
 
@@ -3521,7 +3493,7 @@ class Image:
 
         >>> img = Image("lenna")
         >>> fs = img.findSkintoneBlobs()
-        >>> if( fs is not None ):
+        >>> if fs is not None:
         >>>     fs.draw()
 
         **NOTES**
@@ -3568,35 +3540,35 @@ class Image:
         >>> mask.show()
 
         """
-        if( self._colorSpace != ColorSpace.YCrCb ):
+        if self._colorSpace != ColorSpace.YCrCb:
             YCrCb = self.toYCrCb()
         else:
             YCrCb = self
 
-        Y =  np.ones((256,1),dtype=uint8)*0
+        Y =  np.ones((256, 1), dtype=uint8)*0
         Y[5:] = 255
-        Cr =  np.ones((256,1),dtype=uint8)*0
+        Cr =  np.ones((256, 1), dtype=uint8)*0
         Cr[140:180] = 255
-        Cb =  np.ones((256,1),dtype=uint8)*0
+        Cb =  np.ones((256, 1), dtype=uint8)*0
         Cb[77:135] = 255
         Y_img = YCrCb.getEmpty(1)
         Cr_img = YCrCb.getEmpty(1)
         Cb_img = YCrCb.getEmpty(1)
-        cv.Split(YCrCb.getBitmap(),Y_img,Cr_img,Cb_img,None)
-        cv.LUT(Y_img,Y_img,cv.fromarray(Y))
-        cv.LUT(Cr_img,Cr_img,cv.fromarray(Cr))
-        cv.LUT(Cb_img,Cb_img,cv.fromarray(Cb))
+        cv.Split(YCrCb.getBitmap(), Y_img, Cr_img, Cb_img, None)
+        cv.LUT(Y_img, Y_img, cv.fromarray(Y))
+        cv.LUT(Cr_img, Cr_img, cv.fromarray(Cr))
+        cv.LUT(Cb_img, Cb_img, cv.fromarray(Cb))
         temp = self.getEmpty()
-        cv.Merge(Y_img,Cr_img,Cb_img,None,temp)
-        mask=Image(temp,colorSpace = ColorSpace.YCrCb)
-        mask = mask.binarize((128,128,128))
+        cv.Merge(Y_img, Cr_img, Cb_img, None, temp)
+        mask=Image(temp, colorSpace = ColorSpace.YCrCb)
+        mask = mask.binarize((128, 128, 128))
         mask = mask.toRGB().binarize()
         mask.dilate(dilate_iter)
         return mask
 
     #this code is based on code that's based on code from
     #http://blog.jozilla.net/2008/06/27/fun-with-python-opencv-and-face-detection/
-    def findHaarFeatures(self, cascade, scale_factor=1.2, min_neighbors=2, use_canny=cv.CV_HAAR_DO_CANNY_PRUNING, min_size=(20,20), max_size=(1000,1000)):
+    def findHaarFeatures(self, cascade, scale_factor=1.2, min_neighbors=2, use_canny=cv.CV_HAAR_DO_CANNY_PRUNING, min_size=(20, 20), max_size=(1000, 1000)):
         """
         **SUMMARY**
 
@@ -3634,10 +3606,10 @@ class Image:
           (default yes, set to 0 to disable)
 
         * *min_size* - Minimum window size. By default, it is set to the size
-          of samples the classifier has been trained on ((20,20) for face detection)
+          of samples the classifier has been trained on ((20, 20) for face detection)
 
         * *max_size* - Maximum window size. By default, it is set to the size
-          of samples the classifier has been trained on ((1000,1000) for face detection)
+          of samples the classifier has been trained on ((1000, 1000) for face detection)
 
         **RETURNS**
 
@@ -3645,11 +3617,11 @@ class Image:
 
         **EXAMPLE**
 
-        >>> faces = HaarCascade("./SimpleCV/Features/HaarCascades/face.xml","myFaces")
+        >>> faces = HaarCascade("./SimpleCV/Features/HaarCascades/face.xml", "myFaces")
         >>> cam = Camera()
         >>> while True:
         >>>     f = cam.getImage().findHaarFeatures(faces)
-        >>>     if( f is not None ):
+        >>>     if f is not None:
         >>>          f.show()
 
         **NOTES**
@@ -3674,7 +3646,7 @@ class Image:
             cascade = HaarCascade(cascade)
             if not cascade.getCascade(): 
                 return None
-        elif isinstance(cascade,HaarCascade):
+        elif isinstance(cascade, HaarCascade):
             pass
         else:
             logger.warning('Could not initialize HaarCascade. Enter Valid cascade value.')
@@ -3683,17 +3655,17 @@ class Image:
         try:
             import cv2
             haarClassify = cv2.CascadeClassifier(cascade.getFHandle())
-            objects = haarClassify.detectMultiScale(self.getGrayNumpyCv2(),scaleFactor=scale_factor,minNeighbors=min_neighbors,minSize=min_size,flags=use_canny)
+            objects = haarClassify.detectMultiScale(self.getGrayNumpyCv2(), scaleFactor=scale_factor, minNeighbors=min_neighbors, minSize=min_size, flags=use_canny)
             cv2flag = True
 
         except ImportError:
-            objects = cv.HaarDetectObjects(self._getEqualizedGrayscaleBitmap(),
-                cascade.getCascade(), storage, scale_factor, min_neighbors,
+            objects = cv.HaarDetectObjects(self._getEqualizedGrayscaleBitmap(), 
+                cascade.getCascade(), storage, scale_factor, min_neighbors, 
                 use_canny, min_size)
             cv2flag = False
 
         if objects is not None:
-            return FeatureSet([HaarFeature(self, o, cascade,cv2flag) for o in objects])
+            return FeatureSet([HaarFeature(self, o, cascade, cv2flag) for o in objects])
 
         return None
 
@@ -3706,7 +3678,7 @@ class Image:
 
         **PARAMETERS**
 
-        * *ctr* - The center of the circle as an (x,y) tuple.
+        * *ctr* - The center of the circle as an (x, y) tuple.
         * *rad* - The radius of the circle in pixels
         * *color* - A color tuple (default black)
         * *thickness* - The thickness of the circle, -1 means filled in.
@@ -3720,7 +3692,7 @@ class Image:
         **EXAMPLE**
 
         >>> img = Image("lenna")
-        >>> img.drawCircle((img.width/2,img.height/2),r=50,color=Colors.RED,width=3)
+        >>> img.drawCircle((img.width/2, img.height/2), r=50, color=Colors.RED, width=3)
         >>> img.show()
 
         **NOTES**
@@ -3738,7 +3710,7 @@ class Image:
 
         """
         if( thickness < 0):
-            self.getDrawingLayer().circle((int(ctr[0]), int(ctr[1])), int(rad), color, int(thickness),filled=True)
+            self.getDrawingLayer().circle((int(ctr[0]), int(ctr[1])), int(rad), color, int(thickness), filled=True)
         else:
             self.getDrawingLayer().circle((int(ctr[0]), int(ctr[1])), int(rad), color, int(thickness))
 
@@ -3765,7 +3737,7 @@ class Image:
         **EXAMPLE**
 
         >>> img = Image("lenna")
-        >>> img.drawLine((0,0),(img.width,img.height),color=Color.RED,thickness=3)
+        >>> img.drawLine((0, 0), (img.width, img.height), color=Color.RED, thickness=3)
         >>> img.show()
 
         **NOTES**
@@ -3835,7 +3807,7 @@ class Image:
         **EXAMPLE**
 
         >>> img = Image("lenna")
-        >>> quadrant =img.split(2,2)
+        >>> quadrant =img.split(2, 2)
         >>> for f in quadrant:
         >>>    f.show()
         >>>    time.sleep(1)
@@ -3912,12 +3884,12 @@ class Image:
 
         return (Image(red), Image(green), Image(blue))
 
-    def mergeChannels(self,r=None,g=None,b=None):
+    def mergeChannels(self, r=None, g=None, b=None):
         """
         **SUMMARY**
 
         Merge channels is the oposite of splitChannels. The image takes one image for each
-        of the R,G,B channels and then recombines them into a single image. Optionally any of these
+        of the R, G, B channels and then recombines them into a single image. Optionally any of these
         channels can be None.
 
         **PARAMETERS**
@@ -3934,11 +3906,11 @@ class Image:
         **EXAMPLE**
 
         >>> img = Image("lenna")
-        >>> [r,g,b] = img.splitChannels()
+        >>> [r, g, b] = img.splitChannels()
         >>> r = r.binarize()
         >>> g = g.binarize()
         >>> b = b.binarize()
-        >>> result = img.mergeChannels(r,g,b)
+        >>> result = img.mergeChannels(r, g, b)
         >>> result.show()
 
 
@@ -3946,33 +3918,33 @@ class Image:
         :py:meth:`splitChannels`
 
         """
-        if( r is None and g is None and b is None ):
+        if r is None and g is None and b is None:
             logger.warning("ImageClass.mergeChannels - we need at least one valid channel")
             return None
-        if( r is None ):
+        if r is None:
             r = self.getEmpty(1)
             cv.Zero(r);
         else:
             rt = r.getEmpty(1)
-            cv.Split(r.getBitmap(),rt,rt,rt,None)
+            cv.Split(r.getBitmap(), rt, rt, rt, None)
             r = rt
-        if( g is None ):
+        if g is None:
             g = self.getEmpty(1)
             cv.Zero(g);
         else:
             gt = g.getEmpty(1)
-            cv.Split(g.getBitmap(),gt,gt,gt,None)
+            cv.Split(g.getBitmap(), gt, gt, gt, None)
             g = gt
-        if( b is None ):
+        if b is None:
             b = self.getEmpty(1)
             cv.Zero(b);
         else:
             bt = b.getEmpty(1)
-            cv.Split(b.getBitmap(),bt,bt,bt,None)
+            cv.Split(b.getBitmap(), bt, bt, bt, None)
             b = bt
 
         retVal = self.getEmpty()
-        cv.Merge(b,g,r,None,retVal)
+        cv.Merge(b, g, r, None, retVal)
         return Image(retVal)
 
     def applyHLSCurve(self, hCurve, lCurve, sCurve):
@@ -3995,10 +3967,10 @@ class Image:
         **EXAMPLE**
 
         >>> img = Image("lenna")
-        >>> hc = ColorCurve([[0,0], [100, 120], [180, 230], [255, 255]])
-        >>> lc = ColorCurve([[0,0], [90, 120], [180, 230], [255, 255]])
-        >>> sc = ColorCurve([[0,0], [70, 110], [180, 230], [240, 255]])
-        >>> img2 = img.applyHLSCurve(hc,lc,sc)
+        >>> hc = ColorCurve([[0, 0], [100, 120], [180, 230], [255, 255]])
+        >>> lc = ColorCurve([[0, 0], [90, 120], [180, 230], [255, 255]])
+        >>> sc = ColorCurve([[0, 0], [70, 110], [180, 230], [240, 255]])
+        >>> img2 = img.applyHLSCurve(hc, lc, sc)
 
         **SEE ALSO**
 
@@ -4047,10 +4019,10 @@ class Image:
         **EXAMPLE**
 
         >>> img = Image("lenna")
-        >>> rc = ColorCurve([[0,0], [100, 120], [180, 230], [255, 255]])
-        >>> gc = ColorCurve([[0,0], [90, 120], [180, 230], [255, 255]])
-        >>> bc = ColorCurve([[0,0], [70, 110], [180, 230], [240, 255]])
-        >>> img2 = img.applyRGBCurve(rc,gc,bc)
+        >>> rc = ColorCurve([[0, 0], [100, 120], [180, 230], [255, 255]])
+        >>> gc = ColorCurve([[0, 0], [90, 120], [180, 230], [255, 255]])
+        >>> bc = ColorCurve([[0, 0], [70, 110], [180, 230], [240, 255]])
+        >>> img2 = img.applyRGBCurve(rc, gc, bc)
 
         **SEE ALSO**
 
@@ -4092,10 +4064,10 @@ class Image:
         **EXAMPLE**
 
         >>> img = Image("lenna")
-        >>> rc = ColorCurve([[0,0], [100, 120], [180, 230], [255, 255]])
-        >>> gc = ColorCurve([[0,0], [90, 120], [180, 230], [255, 255]])
-        >>> bc = ColorCurve([[0,0], [70, 110], [180, 230], [240, 255]])
-        >>> img2 = img.applyRGBCurve(rc,gc,bc)
+        >>> rc = ColorCurve([[0, 0], [100, 120], [180, 230], [255, 255]])
+        >>> gc = ColorCurve([[0, 0], [90, 120], [180, 230], [255, 255]])
+        >>> bc = ColorCurve([[0, 0], [70, 110], [180, 230], [240, 255]])
+        >>> img2 = img.applyRGBCurve(rc, gc, bc)
 
         **SEE ALSO**
 
@@ -4183,13 +4155,13 @@ class Image:
         :py:meth:`findBlobsFromMask`
 
         """
-        if isinstance(color,  (float,int,long,complex)):
+        if isinstance(color,  (float, int, long, complex)):
             color_hue = color
         else:
             color_hue = Color.hsv(color)[0]
 
-        vsh_matrix = self.toHSV().getNumpy().reshape(-1,3) #again, gets transposed to vsh
-        hue_channel = np.cast['int'](vsh_matrix[:,2])
+        vsh_matrix = self.toHSV().getNumpy().reshape(-1, 3) #again, gets transposed to vsh
+        hue_channel = np.cast['int'](vsh_matrix[:, 2])
 
         if color_hue < 90:
             hue_loop = 180
@@ -4202,7 +4174,7 @@ class Image:
 
 
         distances = np.where(
-            np.logical_and(vsh_matrix[:,0] > minvalue, vsh_matrix[:,1] > minsaturation),
+            np.logical_and(vsh_matrix[:, 0] > minvalue, vsh_matrix[:, 1] > minsaturation), 
             distances * (255.0 / 90.0), #normalize 0 - 90 -> 0 - 255
             255.0) #use the maxvalue if it false outside of our value/saturation tolerances
 
@@ -4254,7 +4226,7 @@ class Image:
 
         """
         retVal = self.getEmpty()
-        kern = cv.CreateStructuringElementEx(kernelsize,kernelsize, 1, 1, cv.CV_SHAPE_RECT)
+        kern = cv.CreateStructuringElementEx(kernelsize, kernelsize, 1, 1, cv.CV_SHAPE_RECT)
         cv.Erode(self.getBitmap(), retVal, kern, iterations)
         return Image(retVal, colorSpace=self._colorSpace)
 
@@ -4509,9 +4481,9 @@ class Image:
 
         """
         if dynamicRange:
-            return np.histogram(self.toHSV().getNumpy()[:,:,2], bins = bins)[0]
+            return np.histogram(self.toHSV().getNumpy()[:, :, 2], bins = bins)[0]
         else:
-            return np.histogram(self.toHSV().getNumpy()[:,:,2], bins = bins, range=(0.0,360.0))[0]
+            return np.histogram(self.toHSV().getNumpy()[:, :, 2], bins = bins, range=(0.0, 360.0))[0]
 
     def huePeaks(self, bins = 179):
         """
@@ -4535,7 +4507,7 @@ class Image:
 
         **RETURNS**
 
-        A list of (hue,fraction) tuples.
+        A list of (hue, fraction) tuples.
 
         """
         #         keyword arguments:
@@ -4557,7 +4529,7 @@ class Image:
         #             (position, peak_value)
         #             to get the average peak value do 'np.mean(maxtab, 0)[1]' on the results
 
-        y_axis, x_axis = np.histogram(self.toHSV().getNumpy()[:,:,2], bins = bins)
+        y_axis, x_axis = np.histogram(self.toHSV().getNumpy()[:, :, 2], bins = bins)
         x_axis = x_axis[0:bins]
         lookahead = int(bins / 17)
         delta = 0
@@ -4656,7 +4628,7 @@ class Image:
     def __setitem__(self, coord, value):
         value = tuple(reversed(value))  #RGB -> BGR
 
-        if(isinstance(coord[0],slice)):
+        if(isinstance(coord[0], slice)):
             cv.Set(self.getMatrix()[tuple(reversed(coord))], value)
             self._clearBuffers("_matrix")
         else:
@@ -4668,7 +4640,7 @@ class Image:
     def __sub__(self, other):
         newbitmap = self.getEmpty()
         if is_number(other):
-            cv.SubS(self.getBitmap(), cv.Scalar(other,other,other), newbitmap)
+            cv.SubS(self.getBitmap(), cv.Scalar(other, other, other), newbitmap)
         else:
             cv.Sub(self.getBitmap(), other.getBitmap(), newbitmap)
         return Image(newbitmap, colorSpace=self._colorSpace)
@@ -4677,7 +4649,7 @@ class Image:
     def __add__(self, other):
         newbitmap = self.getEmpty()
         if is_number(other):
-            cv.AddS(self.getBitmap(), cv.Scalar(other,other,other), newbitmap)
+            cv.AddS(self.getBitmap(), cv.Scalar(other, other, other), newbitmap)
         else:
             cv.Add(self.getBitmap(), other.getBitmap(), newbitmap)
         return Image(newbitmap, colorSpace=self._colorSpace)
@@ -4686,7 +4658,7 @@ class Image:
     def __and__(self, other):
         newbitmap = self.getEmpty()
         if is_number(other):
-            cv.AndS(self.getBitmap(), cv.Scalar(other,other,other), newbitmap)
+            cv.AndS(self.getBitmap(), cv.Scalar(other, other, other), newbitmap)
         else:
             cv.And(self.getBitmap(), other.getBitmap(), newbitmap)
         return Image(newbitmap, colorSpace=self._colorSpace)
@@ -4695,7 +4667,7 @@ class Image:
     def __or__(self, other):
         newbitmap = self.getEmpty()
         if is_number(other):
-            cv.OrS(self.getBitmap(), cv.Scalar(other,other,other), newbitmap)
+            cv.OrS(self.getBitmap(), cv.Scalar(other, other, other), newbitmap)
         else:
             cv.Or(self.getBitmap(), other.getBitmap(), newbitmap)
         return Image(newbitmap, colorSpace=self._colorSpace)
@@ -4793,7 +4765,7 @@ class Image:
             self.__dict__[k] = v
 
 
-    def findBarcode(self,doZLib=True,zxing_path=""):
+    def findBarcode(self, doZLib=True, zxing_path=""):
         """
         **SUMMARY**
 
@@ -4879,7 +4851,7 @@ class Image:
         :py:class:`Barcode`
 
         """
-        if( doZLib ):
+        if doZLib:
             try:
                 import zbar
             except:
@@ -4977,7 +4949,7 @@ class Image:
                 nLines = len(lines)
             # All white points (edges) in Canny edge image
             em = Image(em)
-            x,y = np.where(em.getGrayNumpy() > 128)
+            x, y = np.where(em.getGrayNumpy() > 128)
             # Put points in dictionary for fast checkout if point is white
             pts = dict((p, 1) for p in zip(x, y))   
             
@@ -5144,7 +5116,7 @@ class Image:
     def _getEdgeMap(self, t1=50, t2=100):
         """
         Return the binary bitmap which shows where edges are in the image.  The two
-        parameters determine how much change in the image determines an edge,
+        parameters determine how much change in the image determines an edge, 
         and how edges are linked together.  For more information refer to:
 
 
@@ -5181,7 +5153,7 @@ class Image:
         **PARAMETERS**
 
         * *angle* - angle in degrees positive is clockwise, negative is counter clockwise
-        * *fixed* - if fixed is true,keep the original image dimensions, otherwise scale the image to fit the rotation
+        * *fixed* - if fixed is true, keep the original image dimensions, otherwise scale the image to fit the rotation
         * *point* - the point about which we want to rotate, if none is defined we use the center.
         * *scale* - and optional floating point scale parameter.
 
@@ -5192,8 +5164,8 @@ class Image:
         **EXAMPLE**
 
         >>> img = Image('logo')
-        >>> img2 = img.rotate( 73.00, point=(img.width/2,img.height/2))
-        >>> img3 = img.rotate( 73.00, fixed=False, point=(img.width/2,img.height/2))
+        >>> img2 = img.rotate( 73.00, point=(img.width/2, img.height/2))
+        >>> img3 = img.rotate( 73.00, fixed=False, point=(img.width/2, img.height/2))
         >>> img4 = img2.sideBySide(img3)
         >>> img4.show()
 
@@ -5202,7 +5174,7 @@ class Image:
         :py:meth:`rotate90`
 
         """
-        if( point[0] == -1 or point[1] == -1 ):
+        if point[0] == -1 or point[1] == -1:
             point[0] = (self.width-1)/2
             point[1] = (self.height-1)/2
 
@@ -5245,15 +5217,15 @@ class Image:
         tX = 0
         tY = 0
         #calculate the translation that will get us centered in the new image
-        if( minX < 0 ):
+        if minX < 0:
             tX = -1.0*minX
-        elif(maxX > newWidth-1 ):
+        elif maxX > newWidth-1 :
             tX = -1.0*(maxX-newWidth)
 
 
-        if( minY < 0 ):
+        if minY < 0:
             tY = -1.0*minY
-        elif(maxY > newHeight-1 ):
+        elif maxY > newHeight-1 :
             tY = -1.0*(maxY-newHeight)
 
 
@@ -5272,7 +5244,7 @@ class Image:
         cv.Zero(retVal)
 
         cv.WarpAffine(self.getBitmap(), retVal, rotMat)
-        #cv.AddS(retVal,(0,255,0),retVal)
+        #cv.AddS(retVal, (0, 255, 0), retVal)
         return Image(retVal, colorSpace=self._colorSpace)
 
 
@@ -5327,7 +5299,7 @@ class Image:
         **EXAMPLE**
 
         >>> img = Image("lenna")
-        >>> points = ((50,0),(img.width+50,0),(img.width,img.height),(0,img.height))
+        >>> points = ((50, 0), (img.width+50, 0), (img.width, img.height), (0, img.height))
         >>> img.shear(points).show()
 
         **SEE ALSO**
@@ -5368,10 +5340,10 @@ class Image:
         **EXAMPLE**
 
         >>> img = Image("lenna")
-        >>> points = ((50,0),(img.width+50,0),(img.width,img.height),(0,img.height))
+        >>> points = ((50, 0), (img.width+50, 0), (img.width, img.height), (0, img.height))
         >>> src =  ((0, 0), (img.width-1, 0), (img.width-1, img.height-1))
-        >>> result = cv.createMat(2,3,cv.CV_32FC1)
-        >>> cv.GetAffineTransform(src,points,result)
+        >>> result = cv.createMat(2, 3, cv.CV_32FC1)
+        >>> cv.GetAffineTransform(src, points, result)
         >>> img.transformAffine(result).show()
 
 
@@ -5404,7 +5376,7 @@ class Image:
 
         **PARAMETERS**
 
-        * *cornerpoints* - A list of four tuples corresponding to the destination corners in the order of (top_left,top_right,bottom_left,bottom_right)
+        * *cornerpoints* - A list of four tuples corresponding to the destination corners in the order of (top_left, top_right, bottom_left, bottom_right)
 
         **RETURNS**
 
@@ -5413,7 +5385,7 @@ class Image:
         **EXAMPLE**
 
         >>> img = Image("lenna")
-        >>> points = ((30, 30), (img.width-10, 70), (img.width-1-40, img.height-1+30),(20,img.height+10))
+        >>> points = ((30, 30), (img.width-10, 70), (img.width-1-40, img.height-1+30), (20, img.height+10))
         >>> img.warp(points).show()
 
         **SEE ALSO**
@@ -5453,10 +5425,10 @@ class Image:
         **EXAMPLE**
 
         >>> img = Image("lenna")
-        >>> points = ((50,0),(img.width+50,0),(img.width,img.height),(0,img.height))
-        >>> src = ((30, 30), (img.width-10, 70), (img.width-1-40, img.height-1+30),(20,img.height+10))
-        >>> result = cv.CreateMat(3,3,cv.CV_32FC1)
-        >>> cv.GetPerspectiveTransform(src,points,result)
+        >>> points = ((50, 0), (img.width+50, 0), (img.width, img.height), (0, img.height))
+        >>> src = ((30, 30), (img.width-10, 70), (img.width-1-40, img.height-1+30), (20, img.height+10))
+        >>> result = cv.CreateMat(3, 3, cv.CV_32FC1)
+        >>> cv.GetPerspectiveTransform(src, points, result)
         >>> img.transformPerspective(result).show()
 
 
@@ -5472,9 +5444,9 @@ class Image:
         """
         try:
             import cv2
-            if( type(rotMatrix) !=  np.ndarray ):
+            if type(rotMatrix) !=  np.ndarray:
                 rotMatrix = np.array(rotMatrix)
-            retVal = cv2.warpPerspective(src=np.array(self.getMatrix()), dsize=(self.width,self.height),M=rotMatrix,flags = cv2.INTER_CUBIC)
+            retVal = cv2.warpPerspective(src=np.array(self.getMatrix()), dsize=(self.width, self.height), M=rotMatrix, flags = cv2.INTER_CUBIC)
             return Image(retVal, colorSpace=self._colorSpace, cv2image=True)
         except:            
             retVal = self.getEmpty()
@@ -5504,7 +5476,7 @@ class Image:
         **EXAMPLE**
 
         >>> img = Image(logo)
-        >>> color = img.getPixel(10,10)
+        >>> color = img.getPixel(10, 10)
 
 
         .. Warning::
@@ -5513,16 +5485,16 @@ class Image:
         """
         c = None
         retVal = None
-        if( x < 0 or x >= self.width ):
+        if x < 0 or x >= self.width:
             logger.warning("getRGBPixel: X value is not valid.")
-        elif( y < 0 or y >= self.height ):
+        elif y < 0 or y >= self.height:
             logger.warning("getRGBPixel: Y value is not valid.")
         else:
             c = cv.Get2D(self.getBitmap(), y, x)
-            if( self._colorSpace == ColorSpace.BGR ):
-                retVal = (c[2],c[1],c[0])
+            if self._colorSpace == ColorSpace.BGR:
+                retVal = (c[2], c[1], c[0])
             else:
-                retVal = (c[0],c[1],c[2])
+                retVal = (c[0], c[1], c[2])
 
         return retVal
 
@@ -5549,7 +5521,7 @@ class Image:
         **EXAMPLE**
 
         >>> img = Image(logo)
-        >>> color = img.getGrayPixel(10,10)
+        >>> color = img.getGrayPixel(10, 10)
 
 
         .. Warning::
@@ -5557,9 +5529,9 @@ class Image:
 
         """
         retVal = None
-        if( x < 0 or x >= self.width ):
+        if x < 0 or x >= self.width:
             logger.warning("getGrayPixel: X value is not valid.")
-        elif( y < 0 or y >= self.height ):
+        elif y < 0 or y >= self.height:
             logger.warning("getGrayPixel: Y value is not valid.")
         else:
             retVal = cv.Get2D(self._getGrayscaleBitmap(), y, x)
@@ -5585,11 +5557,11 @@ class Image:
         **EXAMPLE**
 
         >>> img = Image("lenna")
-        >>> myColor = [0,0,0]
+        >>> myColor = [0, 0, 0]
         >>> sl = img.getVertScanline(423)
         >>> sll = sl.tolist()
         >>> for p in sll:
-        >>>    if( p == myColor ):
+        >>>    if p == myColor:
         >>>        # do something
 
         **SEE ALSO**
@@ -5601,7 +5573,7 @@ class Image:
 
         """
         retVal = None
-        if( column < 0 or column >= self.width ):
+        if column < 0 or column >= self.width:
             logger.warning("getVertRGBScanline: column value is not valid.")
         else:
             retVal = cv.GetCol(self.getBitmap(), column)
@@ -5628,11 +5600,11 @@ class Image:
         **EXAMPLE**
 
         >>> img = Image("lenna")
-        >>> myColor = [0,0,0]
+        >>> myColor = [0, 0, 0]
         >>> sl = img.getHorzScanline(422)
         >>> sll = sl.tolist()
         >>> for p in sll:
-        >>>    if( p == myColor ):
+        >>>    if p == myColor:
         >>>        # do something
 
         **SEE ALSO**
@@ -5643,7 +5615,7 @@ class Image:
 
         """
         retVal = None
-        if( row < 0 or row >= self.height ):
+        if row < 0 or row >= self.height:
             logger.warning("getHorzRGBScanline: row value is not valid.")
         else:
             retVal = cv.GetRow(self.getBitmap(), row)
@@ -5674,7 +5646,7 @@ class Image:
         >>> sl = img.getVertScanlineGray(421)
         >>> sll = sl.tolist()
         >>> for p in sll:
-        >>>    if( p == myColor ):
+        >>>    if p == myColor:
         >>>        # do something
 
         **SEE ALSO**
@@ -5685,7 +5657,7 @@ class Image:
 
         """
         retVal = None
-        if( column < 0 or column >= self.width ):
+        if column < 0 or column >= self.width:
             logger.warning("getHorzRGBScanline: row value is not valid.")
         else:
             retVal = cv.GetCol(self._getGrayscaleBitmap(), column )
@@ -5716,7 +5688,7 @@ class Image:
         >>> sl = img.getHorzScanlineGray(420)
         >>> sll = sl.tolist()
         >>> for p in sll:
-        >>>    if( p == myColor ):
+        >>>    if p == myColor:
         >>>        # do something
 
         **SEE ALSO**
@@ -5728,7 +5700,7 @@ class Image:
 
         """
         retVal = None
-        if( row < 0 or row >= self.height ):
+        if row < 0 or row >= self.height:
             logger.warning("getHorzRGBScanline: row value is not valid.")
         else:
             retVal = cv.GetRow(self._getGrayscaleBitmap(), row )
@@ -5737,20 +5709,20 @@ class Image:
         return retVal
 
 
-    def crop(self, x , y = None, w = None, h = None, centered=False, smart=False):
+    def crop(self, x, y = None, w = None, h = None, centered=False, smart=False):
         """
         
         **SUMMARY**
         
         Consider you want to crop a image with the following dimension::
 
-            (x,y)
+            (x, y)
             +--------------+
             |              |
             |              |h
             |              |
             +--------------+
-                  w      (x1,y1)
+                  w      (x1, y1)
         
 
         Crop attempts to use the x and y position variables and the w and h width
@@ -5762,23 +5734,23 @@ class Image:
         the cropped image within the bounding outside area of that feature
 
         Or parameters can be in the form of a
-         - tuple or list : (x,y,w,h) or [x,y,w,h]
-         - two points : (x,y),(x1,y1) or [(x,y),(x1,y1)]
+         - tuple or list : (x, y, w, h) or [x, y, w, h]
+         - two points : (x, y), (x1, y1) or [(x, y), (x1, y1)]
 
         **PARAMETERS**
 
         * *x* - An integer or feature.
               - If it is a feature we crop to the features dimensions.
               - This can be either the top left corner of the image or the center cooridnate of the the crop region.
-              - or in the form of tuple/list. i,e (x,y,w,h) or [x,y,w,h]
-              - Otherwise in two point form. i,e [(x,y),(x1,y1)] or (x,y)
+              - or in the form of tuple/list. i, e (x, y, w, h) or [x, y, w, h]
+              - Otherwise in two point form. i, e [(x, y), (x1, y1)] or (x, y)
         * *y* - The y coordinate of the center, or top left corner  of the crop region.
-              - Otherwise in two point form. i,e (x1,y1)
+              - Otherwise in two point form. i, e (x1, y1)
         * *w* - Int - the width of the cropped region in pixels.
         * *h* - Int - the height of the cropped region in pixels.
         * *centered*  - Boolean - if True we treat the crop region as being the center
           coordinate and a width and height. If false we treat it as the top left corner of the crop region.
-        * *smart* - Will make sure you don't try and crop outside the image size, so if your image is 100x100 and you tried a crop like img.crop(50,50,100,100), it will autoscale the crop to the max width.
+        * *smart* - Will make sure you don't try and crop outside the image size, so if your image is 100x100 and you tried a crop like img.crop(50, 50, 100, 100), it will autoscale the crop to the max width.
         
 
         **RETURNS**
@@ -5788,14 +5760,14 @@ class Image:
         **EXAMPLE**
 
         >>> img = Image('lenna')
-        >>> img.crop(50,40,128,128).show()
-        >>> img.crop((50,40,128,128)).show() #roi
-        >>> img.crop([50,40,128,128]) #roi
-        >>> img.crop((50,40),(178,168)) # two point form
-        >>> img.crop([(50,40),(178,168)]) # two point form
-        >>> img.crop([x1,x2,x3,x4,x5],[y1,y1,y3,y4,y5]) # list of x's and y's
-        >>> img.crop([(x,y),(x,y),(x,y),(x,y),(x,y)] # list of (x,y)
-        >>> img.crop(x,y,100,100, smart=True)
+        >>> img.crop(50, 40, 128, 128).show()
+        >>> img.crop((50, 40, 128, 128)).show() #roi
+        >>> img.crop([50, 40, 128, 128]) #roi
+        >>> img.crop((50, 40), (178, 168)) # two point form
+        >>> img.crop([(50, 40), (178, 168)]) # two point form
+        >>> img.crop([x1, x2, x3, x4, x5], [y1, y1, y3, y4, y5]) # list of x's and y's
+        >>> img.crop([(x, y), (x, y), (x, y), (x, y), (x, y)] # list of (x, y)
+        >>> img.crop(x, y, 100, 100, smart=True)
         **SEE ALSO**
 
         :py:meth:`embiggen`
@@ -5816,9 +5788,9 @@ class Image:
           elif (y + h) > self.height:
             h = self.height - y
           
-        if(isinstance(x,np.ndarray)):
+        if(isinstance(x, np.ndarray)):
             x = x.tolist()
-        if(isinstance(y,np.ndarray)):
+        if(isinstance(y, np.ndarray)):
             y = y.tolist()
 
         #If it's a feature extract what we need
@@ -5829,36 +5801,36 @@ class Image:
             w = theFeature.width()
             h = theFeature.height()
 
-        elif(isinstance(x, (tuple,list)) and len(x) == 4 and isinstance(x[0],(int, long, float))
+        elif(isinstance(x, (tuple, list)) and len(x) == 4 and isinstance(x[0], (int, long, float))
              and y == None and w == None and h == None):
-                x,y,w,h = x
-        # x of the form [(x,y),(x1,y1),(x2,y2),(x3,y3)]
-        # x of the form [[x,y],[x1,y1],[x2,y2],[x3,y3]]
-        # x of the form ([x,y],[x1,y1],[x2,y2],[x3,y3])
-        # x of the form ((x,y),(x1,y1),(x2,y2),(x3,y3))
-        # x of the form (x,y,x1,y2) or [x,y,x1,y2]            
-        elif( isinstance(x, (list,tuple)) and
-              isinstance(x[0],(list,tuple)) and
+                x, y, w, h = x
+        # x of the form [(x, y), (x1, y1), (x2, y2), (x3, y3)]
+        # x of the form [[x, y], [x1, y1], [x2, y2], [x3, y3]]
+        # x of the form ([x, y], [x1, y1], [x2, y2], [x3, y3])
+        # x of the form ((x, y), (x1, y1), (x2, y2), (x3, y3))
+        # x of the form (x, y, x1, y2) or [x, y, x1, y2]            
+        elif( isinstance(x, (list, tuple)) and
+              isinstance(x[0], (list, tuple)) and
               (len(x) == 4 and len(x[0]) == 2 ) and
               y == None and w == None and h == None):
             if (len(x[0])==2 and len(x[1])==2 and len(x[2])==2 and len(x[3])==2):
-                xmax = np.max([x[0][0],x[1][0],x[2][0],x[3][0]])
-                ymax = np.max([x[0][1],x[1][1],x[2][1],x[3][1]])
-                xmin = np.min([x[0][0],x[1][0],x[2][0],x[3][0]])
-                ymin = np.min([x[0][1],x[1][1],x[2][1],x[3][1]])
+                xmax = np.max([x[0][0], x[1][0], x[2][0], x[3][0]])
+                ymax = np.max([x[0][1], x[1][1], x[2][1], x[3][1]])
+                xmin = np.min([x[0][0], x[1][0], x[2][0], x[3][0]])
+                ymin = np.min([x[0][1], x[1][1], x[2][1], x[3][1]])
                 x = xmin
                 y = ymin
                 w = xmax-xmin
                 h = ymax-ymin
             else:
-                logger.warning("x should be in the form  ((x,y),(x1,y1),(x2,y2),(x3,y3))")
+                logger.warning("x should be in the form  ((x, y), (x1, y1), (x2, y2), (x3, y3))")
                 return None
  
-        # x,y of the form [x1,x2,x3,x4,x5....] and y similar
-        elif(isinstance(x, (tuple,list)) and
-             isinstance(y, (tuple,list)) and
+        # x, y of the form [x1, x2, x3, x4, x5....] and y similar
+        elif(isinstance(x, (tuple, list)) and
+             isinstance(y, (tuple, list)) and
              len(x) > 4 and len(y) > 4 ):
-            if(isinstance(x[0],(int, long, float)) and isinstance(y[0],(int, long, float))):
+            if(isinstance(x[0], (int, long, float)) and isinstance(y[0], (int, long, float))):
                 xmax = np.max(x)
                 ymax = np.max(y)
                 xmin = np.min(x)
@@ -5868,13 +5840,13 @@ class Image:
                 w = xmax-xmin
                 h = ymax-ymin
             else:
-                logger.warning("x should be in the form x = [1,2,3,4,5] y =[0,2,4,6,8]")
+                logger.warning("x should be in the form x = [1, 2, 3, 4, 5] y =[0, 2, 4, 6, 8]")
                 return None
 
-        # x of the form [(x,y),(x,y),(x,y),(x,y),(x,y),(x,y)]
-        elif(isinstance(x, (list,tuple)) and
+        # x of the form [(x, y), (x, y), (x, y), (x, y), (x, y), (x, y)]
+        elif(isinstance(x, (list, tuple)) and
              len(x) > 4 and len(x[0]) == 2 and y == None and w == None and h == None):
-            if(isinstance(x[0][0],(int, long, float))):
+            if(isinstance(x[0][0], (int, long, float))):
                 xs = [pt[0] for pt in x]
                 ys = [pt[1] for pt in x]
                 xmax = np.max(xs)
@@ -5886,34 +5858,34 @@ class Image:
                 w = xmax-xmin
                 h = ymax-ymin
             else:
-                logger.warning("x should be in the form [(x,y),(x,y),(x,y),(x,y),(x,y),(x,y)]")
+                logger.warning("x should be in the form [(x, y), (x, y), (x, y), (x, y), (x, y), (x, y)]")
                 return None
 
-        # x of the form [(x,y),(x1,y1)]
-        elif(isinstance(x,(list,tuple)) and len(x) == 2 and isinstance(x[0],(list,tuple)) and isinstance(x[1],(list,tuple)) and y == None and w == None and h == None):
+        # x of the form [(x, y), (x1, y1)]
+        elif isinstance(x, (list, tuple)) and len(x) == 2 and isinstance(x[0], (list, tuple)) and isinstance(x[1], (list, tuple)) and y == None and w == None and h == None:
             if (len(x[0])==2 and len(x[1])==2):
-                xt = np.min([x[0][0],x[1][0]])
-                yt = np.min([x[0][0],x[1][0]])
+                xt = np.min([x[0][0], x[1][0]])
+                yt = np.min([x[0][0], x[1][0]])
                 w = np.abs(x[0][0]-x[1][0])
                 h = np.abs(x[0][1]-x[1][1])
                 x = xt
                 y = yt
             else:
-                logger.warning("x should be in the form [(x1,y1),(x2,y2)]")
+                logger.warning("x should be in the form [(x1, y1), (x2, y2)]")
                 return None
 
-        # x and y of the form (x,y),(x1,y2)
-        elif(isinstance(x, (tuple,list)) and isinstance(y,(tuple,list)) and w == None and h == None):
+        # x and y of the form (x, y), (x1, y2)
+        elif isinstance(x, (tuple, list)) and isinstance(y, (tuple, list)) and w == None and h == None:
             if (len(x)==2 and len(y)==2):
-                xt = np.min([x[0],y[0]])
-                yt = np.min([x[1],y[1]])
+                xt = np.min([x[0], y[0]])
+                yt = np.min([x[1], y[1]])
                 w = np.abs(y[0]-x[0])
                 h = np.abs(y[1]-x[1])
                 x = xt
                 y = yt
                 
             else:
-                logger.warning("if x and y are tuple it should be in the form (x1,y1) and (x2,y2)")
+                logger.warning("if x and y are tuple it should be in the form (x1, y1) and (x2, y2)")
                 return None
 
 
@@ -5921,31 +5893,31 @@ class Image:
         if(y == None or w == None or h == None):
             print "Please provide an x, y, width, height to function"
 
-        if( w <= 0 or h <= 0 ):
+        if w <= 0 or h <= 0:
             logger.warning("Can't do a negative crop!")
             return None
 
-        retVal = cv.CreateImage((int(w),int(h)), cv.IPL_DEPTH_8U, 3)
-        if( x < 0 or y < 0 ):
+        retVal = cv.CreateImage((int(w), int(h)), cv.IPL_DEPTH_8U, 3)
+        if x < 0 or y < 0:
             logger.warning("Crop will try to help you, but you have a negative crop position, your width and height may not be what you want them to be.")
 
 
-        if( centered ):
+        if centered:
             rectangle = (int(x-(w/2)), int(y-(h/2)), int(w), int(h))
         else:
             rectangle = (int(x), int(y), int(w), int(h))
 
-        (topROI, bottomROI) = self._rectOverlapROIs((rectangle[2],rectangle[3]),(self.width,self.height),(rectangle[0],rectangle[1]))
+        (topROI, bottomROI) = self._rectOverlapROIs((rectangle[2], rectangle[3]), (self.width, self.height), (rectangle[0], rectangle[1]))
 
-        if( bottomROI is None ):
+        if bottomROI is None:
             logger.warning("Hi, your crop rectangle doesn't even overlap your image. I have no choice but to return None.")
             return None
 
-        retVal = np.zeros((bottomROI[3],bottomROI[2],3),dtype='uint8')
+        retVal = np.zeros((bottomROI[3], bottomROI[2], 3), dtype='uint8')
 
-        retVal= self.getNumpyCv2()[bottomROI[1]:bottomROI[1] + bottomROI[3],bottomROI[0]:bottomROI[0] + bottomROI[2],:] 
+        retVal= self.getNumpyCv2()[bottomROI[1]:bottomROI[1] + bottomROI[3], bottomROI[0]:bottomROI[0] + bottomROI[2], :] 
         
-        img = Image(retVal, colorSpace=self._colorSpace,cv2image = True)
+        img = Image(retVal, colorSpace=self._colorSpace, cv2image = True)
 
         #Buffering the top left point (x, y) in a image.
         img._uncroppedX = self._uncroppedX + int(x)
@@ -5975,7 +5947,7 @@ class Image:
         **EXAMPLE**
 
         >>> img = Image("lenna")
-        >>> subreg = img.regionSelect(10,10,100,100) # often this comes from a mouse click
+        >>> subreg = img.regionSelect(10, 10, 100, 100) # often this comes from a mouse click
         >>> subreg.show()
 
         **SEE ALSO**
@@ -5988,14 +5960,14 @@ class Image:
 
 
         retVal = None
-        if( w <= 0 or h <= 0 or w > self.width or h > self.height ):
+        if w <= 0 or h <= 0 or w > self.width or h > self.height:
             logger.warning("regionSelect: the given values will not fit in the image or are too small.")
         else:
             xf = x2
-            if( x1 < x2 ):
+            if x1 < x2:
                 xf = x1
             yf = y2
-            if( y1 < y2 ):
+            if y1 < y2:
                 yf = y1
             retVal = self.crop(xf, yf, w, h)
 
@@ -6085,7 +6057,7 @@ class Image:
         **EXAMPLE**
 
         >>> img = Image("lenna")
-        >>> img.drawText("xamox smells like cool ranch doritos.", 50,50,color=Color.BLACK,fontsize=48)
+        >>> img.drawText("xamox smells like cool ranch doritos.", 50, 50, color=Color.BLACK, fontsize=48)
         >>> img.show()
 
         **SEE ALSO**
@@ -6105,7 +6077,7 @@ class Image:
         self.getDrawingLayer().text(text, (x, y), color)
 
 
-    def drawRectangle(self,x,y,w,h,color=Color.RED,width=1,alpha=255):
+    def drawRectangle(self, x, y, w, h, color=Color.RED, width=1, alpha=255):
         """
         **SUMMARY**
 
@@ -6129,7 +6101,7 @@ class Image:
         **EXAMPLE**
 
         >>> img = Image("lenna")
-        >>> img.drawREctange( 50,50,100,123)
+        >>> img.drawREctange( 50, 50, 100, 123)
         >>> img.show()
 
         **SEE ALSO**
@@ -6141,12 +6113,12 @@ class Image:
         :py:class:`DrawingLayer`
 
         """
-        if( width < 1 ):
-            self.getDrawingLayer().rectangle((x,y),(w,h),color,filled=True,alpha=alpha)
+        if width < 1:
+            self.getDrawingLayer().rectangle((x, y), (w, h), color, filled=True, alpha=alpha)
         else:
-            self.getDrawingLayer().rectangle((x,y),(w,h),color,width,alpha=alpha)
+            self.getDrawingLayer().rectangle((x, y), (w, h), color, width, alpha=alpha)
 
-    def drawRotatedRectangle(self,boundingbox,color=Color.RED,width=1):
+    def drawRotatedRectangle(self, boundingbox, color=Color.RED, width=1):
         """
         **SUMMARY**
 
@@ -6157,7 +6129,7 @@ class Image:
         **KAT FIX THIS**
         """
 
-        cv.EllipseBox(self.getBitmap(),box=boundingbox,color=color,thicness=width)
+        cv.EllipseBox(self.getBitmap(), box=boundingbox, color=color, thicness=width)
 
 
     def show(self, type = 'window'):
@@ -6206,14 +6178,14 @@ class Image:
         else:
             print "Unknown type to show"
 
-    def _surface2Image(self,surface):
+    def _surface2Image(self, surface):
         imgarray = pg.surfarray.array3d(surface)
         retVal = Image(imgarray)
         retVal._colorSpace = ColorSpace.RGB
         return retVal.toBGR().transpose()
 
-    def _image2Surface(self,img):
-        return pg.image.fromstring(img.getPIL().tostring(),img.size(), "RGB")
+    def _image2Surface(self, img):
+        return pg.image.fromstring(img.getPIL().tostring(), img.size(), "RGB")
         #return pg.surfarray.make_surface(img.toRGB().getNumpy())
 
     def toPygameSurface(self):
@@ -6251,7 +6223,7 @@ class Image:
         :py:meth:`blit`
 
         """
-        return pg.image.fromstring(self.getPIL().tostring(),self.size(), "RGB")
+        return pg.image.fromstring(self.getPIL().tostring(), self.size(), "RGB")
 
 
     def addDrawingLayer(self, layer = None):
@@ -6271,7 +6243,7 @@ class Image:
         **EXAMPLE**
 
         >>> img = Image("Lenna")
-        >>> myLayer = DrawingLayer((img.width,img.height))
+        >>> myLayer = DrawingLayer((img.width, img.height))
         >>> img.addDrawingLayer(myLayer)
 
         **SEE ALSO**
@@ -6321,11 +6293,11 @@ class Image:
         **EXAMPLE**
 
         >>> img = Image("Lenna")
-        >>> myLayer1 = DrawingLayer((img.width,img.height))
-        >>> myLayer2 = DrawingLayer((img.width,img.height))
+        >>> myLayer1 = DrawingLayer((img.width, img.height))
+        >>> myLayer2 = DrawingLayer((img.width, img.height))
         >>> #Draw on the layers
-        >>> img.insertDrawingLayer(myLayer1,1) # on top
-        >>> img.insertDrawingLayer(myLayer2,2) # on the bottom
+        >>> img.insertDrawingLayer(myLayer1, 1) # on top
+        >>> img.insertDrawingLayer(myLayer2, 2) # on the bottom
 
 
         **SEE ALSO**
@@ -6413,11 +6385,11 @@ class Image:
         **EXAMPLE**
 
         >>> img = Image("Lenna")
-        >>> myLayer1 = DrawingLayer((img.width,img.height))
-        >>> myLayer2 = DrawingLayer((img.width,img.height))
+        >>> myLayer1 = DrawingLayer((img.width, img.height))
+        >>> myLayer2 = DrawingLayer((img.width, img.height))
         >>> #Draw on the layers
-        >>> img.insertDrawingLayer(myLayer1,1) # on top
-        >>> img.insertDrawingLayer(myLayer2,2) # on the bottom
+        >>> img.insertDrawingLayer(myLayer1, 1) # on top
+        >>> img.insertDrawingLayer(myLayer2, 2) # on the bottom
         >>> layer2 =img.getDrawingLayer(2)
 
         **SEE ALSO**
@@ -6470,10 +6442,10 @@ class Image:
         **EXAMPLE**
 
         >>> img = Image("Lenna")
-        >>> myLayer1 = DrawingLayer((img.width,img.height))
-        >>> myLayer2 = DrawingLayer((img.width,img.height))
-        >>> img.insertDrawingLayer(myLayer1,1) # on top
-        >>> img.insertDrawingLayer(myLayer2,2) # on the bottom
+        >>> myLayer1 = DrawingLayer((img.width, img.height))
+        >>> myLayer2 = DrawingLayer((img.width, img.height))
+        >>> img.insertDrawingLayer(myLayer1, 1) # on top
+        >>> img.insertDrawingLayer(myLayer2, 2) # on the bottom
         >>> img.clearLayers()
 
         **SEE ALSO**
@@ -6547,10 +6519,10 @@ class Image:
         **EXAMPLE**
 
         >>> img = Image("Lenna")
-        >>> myLayer1 = DrawingLayer((img.width,img.height))
-        >>> myLayer2 = DrawingLayer((img.width,img.height))
-        >>> img.insertDrawingLayer(myLayer1,1) # on top
-        >>> img.insertDrawingLayer(myLayer2,2) # on the bottom
+        >>> myLayer1 = DrawingLayer((img.width, img.height))
+        >>> myLayer2 = DrawingLayer((img.width, img.height))
+        >>> img.insertDrawingLayer(myLayer1, 1) # on top
+        >>> img.insertDrawingLayer(myLayer2, 2) # on the bottom
         >>> derp = img.mergedLayers()
 
         **SEE ALSO**
@@ -6592,11 +6564,11 @@ class Image:
         **EXAMPLE**
 
         >>> img = Image("Lenna")
-        >>> myLayer1 = DrawingLayer((img.width,img.height))
-        >>> myLayer2 = DrawingLayer((img.width,img.height))
+        >>> myLayer1 = DrawingLayer((img.width, img.height))
+        >>> myLayer2 = DrawingLayer((img.width, img.height))
         >>> #Draw some stuff
-        >>> img.insertDrawingLayer(myLayer1,1) # on top
-        >>> img.insertDrawingLayer(myLayer2,2) # on the bottom
+        >>> img.insertDrawingLayer(myLayer1, 1) # on top
+        >>> img.insertDrawingLayer(myLayer2, 2) # on the bottom
         >>> derp = img.applyLayers()
 
         **SEE ALSO**
@@ -6632,7 +6604,7 @@ class Image:
             indicies.reverse()
             return Image(imgSurf)
 
-    def adaptiveScale(self, resolution,fit=True):
+    def adaptiveScale(self, resolution, fit=True):
         """
         **SUMMARY**
 
@@ -6644,7 +6616,7 @@ class Image:
 
         **PARAMETERS**
 
-        * *resolution* - The size of the returned image as a (width,height) tuple.
+        * *resolution* - The size of the returned image as a (width, height) tuple.
         * *fit* - If fit is true we try to fit the image while maintaining the aspect ratio.
           If fit is False we crop and center the image to fit the resolution.
 
@@ -6656,7 +6628,7 @@ class Image:
 
         This is typically used in this instance:
 
-        >>> d = Display((800,600))
+        >>> d = Display((800, 600))
         >>> i = Image((640, 480))
         >>> i.save(d)
 
@@ -6673,12 +6645,12 @@ class Image:
         targeth = resolution[1]
         if( self.size() == resolution): # we have to resize
             retVal = self
-        elif( imgAR == wndwAR and fit):
-            retVal = img.scale(resolution[0],resolution[1])
+        elif  imgAR == wndwAR and fit:
+            retVal = img.scale(resolution[0], resolution[1])
             return retVal
-        elif(fit):
+        elif fit:
             #scale factors
-            retVal = np.zeros((resolution[1],resolution[0],3),dtype='uint8')
+            retVal = np.zeros((resolution[1], resolution[0], 3), dtype='uint8')
             wscale = (float(self.width)/float(resolution[0]))
             hscale = (float(self.height)/float(resolution[1]))
             if(wscale>1): #we're shrinking what is the percent reduction
@@ -6689,17 +6661,17 @@ class Image:
                 hscale=1-(1.0/hscale)
             else:
                 hscale=1.0-hscale
-            if( wscale == 0 ): #if we can get away with not scaling do that
+            if wscale == 0: #if we can get away with not scaling do that
                 targetx = 0
                 targety = (resolution[1]-self.height)/2
                 targetw = img.width
                 targeth = img.height
-            elif( hscale == 0 ): #if we can get away with not scaling do that
+            elif hscale == 0: #if we can get away with not scaling do that
                 targetx = (resolution[0]-img.width)/2
                 targety = 0
                 targetw = img.width
                 targeth = img.height
-            elif(wscale < hscale): # the width has less distortion
+            elif wscale < hscale: # the width has less distortion
                 sfactor = float(resolution[0])/float(self.width)
                 targetw = int(float(self.width)*sfactor)
                 targeth = int(float(self.height)*sfactor)
@@ -6713,7 +6685,7 @@ class Image:
                 else:
                     targetx = 0
                     targety = (resolution[1]-targeth)/2
-                img = img.scale(targetw,targeth)
+                img = img.scale(targetw, targeth)
             else: #the height has more distortion
                 sfactor = float(resolution[1])/float(self.height)
                 targetw = int(float(self.width)*sfactor)
@@ -6728,53 +6700,53 @@ class Image:
                 else:
                     targetx = (resolution[0]-targetw)/2
                     targety = 0
-                img = img.scale(targetw,targeth)
+                img = img.scale(targetw, targeth)
         
         else: # we're going to crop instead
             if(self.width <= resolution[0] and self.height <= resolution[1] ): # center a too small image
                 #we're too small just center the thing
-                retVal = np.zeros((resolution[1],resolution[0],3),dtype='uint8')
+                retVal = np.zeros((resolution[1], resolution[0], 3), dtype='uint8')
                 targetx = (resolution[0]/2)-(self.width/2)
                 targety = (resolution[1]/2)-(self.height/2)
                 targeth = self.height
                 targetw = self.width
-            elif(self.width > resolution[0] and self.height > resolution[1]): #crop too big on both axes
+            elif self.width > resolution[0] and self.height > resolution[1]: #crop too big on both axes
                 targetw = resolution[0]
                 targeth = resolution[1]
                 targetx = 0
                 targety = 0
                 x = (self.width-resolution[0])/2
                 y = (self.height-resolution[1])/2
-                img = img.crop(x,y,targetw,targeth)
+                img = img.crop(x, y, targetw, targeth)
                 return img
-            elif( self.width <= resolution[0] and self.height > resolution[1]): #height too big
+            elif  self.width <= resolution[0] and self.height > resolution[1]: #height too big
                 #crop along the y dimension and center along the x dimension
-                retVal = np.zeros((resolution[1],resolution[0],3),dtype='uint8')
+                retVal = np.zeros((resolution[1], resolution[0], 3), dtype='uint8')
                 targetw = self.width
                 targeth = resolution[1]
                 targetx = (resolution[0]-self.width)/2
                 targety = 0
                 x = 0
                 y = (self.height-resolution[1])/2
-                img = img.crop(x,y,targetw,targeth)
+                img = img.crop(x, y, targetw, targeth)
 
-            elif( self.width > resolution[0] and self.height <= resolution[1]): #width too big
+            elif  self.width > resolution[0] and self.height <= resolution[1]: #width too big
                 #crop along the y dimension and center along the x dimension
-                retVal = np.zeros((resolution[1],resolution[0],3),dtype='uint8')
+                retVal = np.zeros((resolution[1], resolution[0], 3), dtype='uint8')
                 targetw = resolution[0]
                 targeth = self.height
                 targetx = 0
                 targety = (resolution[1]-self.height)/2
                 x = (self.width-resolution[0])/2
                 y = 0
-                img = img.crop(x,y,targetw,targeth)
+                img = img.crop(x, y, targetw, targeth)
         
-        retVal[targety:targety + targeth,targetx:targetx + targetw,:] = img.getNumpyCv2()
-        retVal = Image(retVal,cv2image = True)
+        retVal[targety:targety + targeth, targetx:targetx + targetw, :] = img.getNumpyCv2()
+        retVal = Image(retVal, cv2image = True)
         return(retVal)
 
 
-    def blit(self, img, pos=None,alpha=None,mask=None,alphaMask=None):
+    def blit(self, img, pos=None, alpha=None, mask=None, alphaMask=None):
         """
         **SUMMARY**
 
@@ -6789,7 +6761,7 @@ class Image:
         **PARAMETERS**
 
         * *img* - an image to place ontop of this image.
-        * *pos* - an (x,y) position tuple of the top left corner of img on this image. Note that these values
+        * *pos* - an (x, y) position tuple of the top left corner of img on this image. Note that these values
           can be negative.
         * *alpha* - a single floating point alpha value (0=see the bottom image, 1=see just img, 0.5 blend the two 50/50).
         * *mask* - a binary mask the same size as the input image. White areas are blitted, black areas are not blitted.
@@ -6805,10 +6777,10 @@ class Image:
         >>> bottomImg = Image("bottom.png")
         >>> mask = Image("mask.png")
         >>> aMask = Image("alpphaMask.png")
-        >>> bottomImg.blit(top,pos=(100,100)).show()
-        >>> bottomImg.blit(top,alpha=0.5).show()
-        >>> bottomImg.blit(top,pos=(100,100),mask=mask).show()
-        >>> bottomImg.blit(top,pos=(-10,-10)alphaMask=aMask).show()
+        >>> bottomImg.blit(top, pos=(100, 100)).show()
+        >>> bottomImg.blit(top, alpha=0.5).show()
+        >>> bottomImg.blit(top, pos=(100, 100), mask=mask).show()
+        >>> bottomImg.blit(top, pos=(-10, -10)alphaMask=aMask).show()
 
         **SEE ALSO**
 
@@ -6817,95 +6789,95 @@ class Image:
 
         """
         retVal = Image(self.getEmpty())
-        cv.Copy(self.getBitmap(),retVal.getBitmap())
+        cv.Copy(self.getBitmap(), retVal.getBitmap())
 
         w = img.width
         h = img.height
 
-        if( pos is None ):
-            pos = (0,0)
+        if pos is None:
+            pos = (0, 0)
 
-        (topROI, bottomROI) = self._rectOverlapROIs((img.width,img.height),(self.width,self.height),pos)
+        (topROI, bottomROI) = self._rectOverlapROIs((img.width, img.height), (self.width, self.height), pos)
 
-        if( alpha is not None ):
-            cv.SetImageROI(img.getBitmap(),topROI);
-            cv.SetImageROI(retVal.getBitmap(),bottomROI);
+        if alpha is not None:
+            cv.SetImageROI(img.getBitmap(), topROI);
+            cv.SetImageROI(retVal.getBitmap(), bottomROI);
             a = float(alpha)
             b = float(1.00-a)
             g = float(0.00)
-            cv.AddWeighted(img.getBitmap(),a,retVal.getBitmap(),b,g,retVal.getBitmap())
+            cv.AddWeighted(img.getBitmap(), a, retVal.getBitmap(), b, g, retVal.getBitmap())
             cv.ResetImageROI(img.getBitmap());
             cv.ResetImageROI(retVal.getBitmap());
-        elif( alphaMask is not None ):
-            if( alphaMask is not None and (alphaMask.width != img.width or alphaMask.height != img.height ) ):
+        elif alphaMask is not None:
+            if alphaMask is not None and (alphaMask.width != img.width or alphaMask.height != img.height ):
                 logger.warning("Image.blit: your mask and image don't match sizes, if the mask doesn't fit, you can not blit! Try using the scale function.")
                 return None
 
-            cImg = img.crop(topROI[0],topROI[1],topROI[2],topROI[3])
-            cMask = alphaMask.crop(topROI[0],topROI[1],topROI[2],topROI[3])
-            retValC = retVal.crop(bottomROI[0],bottomROI[1],bottomROI[2],bottomROI[3])
+            cImg = img.crop(topROI[0], topROI[1], topROI[2], topROI[3])
+            cMask = alphaMask.crop(topROI[0], topROI[1], topROI[2], topROI[3])
+            retValC = retVal.crop(bottomROI[0], bottomROI[1], bottomROI[2], bottomROI[3])
             r = cImg.getEmpty(1)
             g = cImg.getEmpty(1)
             b = cImg.getEmpty(1)
             cv.Split(cImg.getBitmap(), b, g, r, None)
-            rf=cv.CreateImage((cImg.width,cImg.height),cv.IPL_DEPTH_32F,1)
-            gf=cv.CreateImage((cImg.width,cImg.height),cv.IPL_DEPTH_32F,1)
-            bf=cv.CreateImage((cImg.width,cImg.height),cv.IPL_DEPTH_32F,1)
-            af=cv.CreateImage((cImg.width,cImg.height),cv.IPL_DEPTH_32F,1)
-            cv.ConvertScale(r,rf)
-            cv.ConvertScale(g,gf)
-            cv.ConvertScale(b,bf)
-            cv.ConvertScale(cMask._getGrayscaleBitmap(),af)
-            cv.ConvertScale(af,af,scale=(1.0/255.0))
-            cv.Mul(rf,af,rf)
-            cv.Mul(gf,af,gf)
-            cv.Mul(bf,af,bf)
+            rf=cv.CreateImage((cImg.width, cImg.height), cv.IPL_DEPTH_32F, 1)
+            gf=cv.CreateImage((cImg.width, cImg.height), cv.IPL_DEPTH_32F, 1)
+            bf=cv.CreateImage((cImg.width, cImg.height), cv.IPL_DEPTH_32F, 1)
+            af=cv.CreateImage((cImg.width, cImg.height), cv.IPL_DEPTH_32F, 1)
+            cv.ConvertScale(r, rf)
+            cv.ConvertScale(g, gf)
+            cv.ConvertScale(b, bf)
+            cv.ConvertScale(cMask._getGrayscaleBitmap(), af)
+            cv.ConvertScale(af, af, scale=(1.0/255.0))
+            cv.Mul(rf, af, rf)
+            cv.Mul(gf, af, gf)
+            cv.Mul(bf, af, bf)
 
             dr = retValC.getEmpty(1)
             dg = retValC.getEmpty(1)
             db = retValC.getEmpty(1)
             cv.Split(retValC.getBitmap(), db, dg, dr, None)
-            drf=cv.CreateImage((retValC.width,retValC.height),cv.IPL_DEPTH_32F,1)
-            dgf=cv.CreateImage((retValC.width,retValC.height),cv.IPL_DEPTH_32F,1)
-            dbf=cv.CreateImage((retValC.width,retValC.height),cv.IPL_DEPTH_32F,1)
-            daf=cv.CreateImage((retValC.width,retValC.height),cv.IPL_DEPTH_32F,1)
-            cv.ConvertScale(dr,drf)
-            cv.ConvertScale(dg,dgf)
-            cv.ConvertScale(db,dbf)
-            cv.ConvertScale(cMask.invert()._getGrayscaleBitmap(),daf)
-            cv.ConvertScale(daf,daf,scale=(1.0/255.0))
-            cv.Mul(drf,daf,drf)
-            cv.Mul(dgf,daf,dgf)
-            cv.Mul(dbf,daf,dbf)
+            drf=cv.CreateImage((retValC.width, retValC.height), cv.IPL_DEPTH_32F, 1)
+            dgf=cv.CreateImage((retValC.width, retValC.height), cv.IPL_DEPTH_32F, 1)
+            dbf=cv.CreateImage((retValC.width, retValC.height), cv.IPL_DEPTH_32F, 1)
+            daf=cv.CreateImage((retValC.width, retValC.height), cv.IPL_DEPTH_32F, 1)
+            cv.ConvertScale(dr, drf)
+            cv.ConvertScale(dg, dgf)
+            cv.ConvertScale(db, dbf)
+            cv.ConvertScale(cMask.invert()._getGrayscaleBitmap(), daf)
+            cv.ConvertScale(daf, daf, scale=(1.0/255.0))
+            cv.Mul(drf, daf, drf)
+            cv.Mul(dgf, daf, dgf)
+            cv.Mul(dbf, daf, dbf)
 
-            cv.Add(rf,drf,rf)
-            cv.Add(gf,dgf,gf)
-            cv.Add(bf,dbf,bf)
+            cv.Add(rf, drf, rf)
+            cv.Add(gf, dgf, gf)
+            cv.Add(bf, dbf, bf)
 
-            cv.ConvertScaleAbs(rf,r)
-            cv.ConvertScaleAbs(gf,g)
-            cv.ConvertScaleAbs(bf,b)
+            cv.ConvertScaleAbs(rf, r)
+            cv.ConvertScaleAbs(gf, g)
+            cv.ConvertScaleAbs(bf, b)
 
-            cv.Merge(b,g,r,None,retValC.getBitmap())
-            cv.SetImageROI(retVal.getBitmap(),bottomROI)
-            cv.Copy(retValC.getBitmap(),retVal.getBitmap())
+            cv.Merge(b, g, r, None, retValC.getBitmap())
+            cv.SetImageROI(retVal.getBitmap(), bottomROI)
+            cv.Copy(retValC.getBitmap(), retVal.getBitmap())
             cv.ResetImageROI(retVal.getBitmap())
 
-        elif( mask is not None):
-            if( mask is not None and (mask.width != img.width or mask.height != img.height ) ):
+        elif  mask is not None:
+            if mask is not None and (mask.width != img.width or mask.height != img.height ):
                 logger.warning("Image.blit: your mask and image don't match sizes, if the mask doesn't fit, you can not blit! Try using the scale function. ")
                 return None
-            cv.SetImageROI(img.getBitmap(),topROI)
-            cv.SetImageROI(mask.getBitmap(),topROI)
-            cv.SetImageROI(retVal.getBitmap(),bottomROI)
-            cv.Copy(img.getBitmap(),retVal.getBitmap(),mask.getBitmap())
+            cv.SetImageROI(img.getBitmap(), topROI)
+            cv.SetImageROI(mask.getBitmap(), topROI)
+            cv.SetImageROI(retVal.getBitmap(), bottomROI)
+            cv.Copy(img.getBitmap(), retVal.getBitmap(), mask.getBitmap())
             cv.ResetImageROI(img.getBitmap())
             cv.ResetImageROI(mask.getBitmap())
             cv.ResetImageROI(retVal.getBitmap())
         else:  #vanilla blit
-            cv.SetImageROI(img.getBitmap(),topROI)
-            cv.SetImageROI(retVal.getBitmap(),bottomROI)
-            cv.Copy(img.getBitmap(),retVal.getBitmap())
+            cv.SetImageROI(img.getBitmap(), topROI)
+            cv.SetImageROI(retVal.getBitmap(), bottomROI)
+            cv.Copy(img.getBitmap(), retVal.getBitmap())
             cv.ResetImageROI(img.getBitmap())
             cv.ResetImageROI(retVal.getBitmap())
 
@@ -6943,126 +6915,126 @@ class Image:
         """
         #there is probably a cleaner way to do this, but I know I hit every case when they are enumerated
         retVal = None
-        if( side == "top" ):
+        if side == "top":
             #clever
-            retVal = image.sideBySide(self,"bottom",scale)
-        elif( side == "bottom" ):
-            if( self.width > image.width ):
-                if( scale ):
+            retVal = image.sideBySide(self, "bottom", scale)
+        elif side == "bottom":
+            if self.width > image.width:
+                if scale:
                     #scale the other image width to fit
                     resized = image.resize(w=self.width)
                     nW = self.width
                     nH = self.height + resized.height
-                    newCanvas = cv.CreateImage((nW,nH), cv.IPL_DEPTH_8U, 3)
+                    newCanvas = cv.CreateImage((nW, nH), cv.IPL_DEPTH_8U, 3)
                     cv.SetZero(newCanvas)
-                    cv.SetImageROI(newCanvas,(0,0,nW,self.height))
-                    cv.Copy(self.getBitmap(),newCanvas)
+                    cv.SetImageROI(newCanvas, (0, 0, nW, self.height))
+                    cv.Copy(self.getBitmap(), newCanvas)
                     cv.ResetImageROI(newCanvas)
-                    cv.SetImageROI(newCanvas,(0,self.height,resized.width,resized.height))
-                    cv.Copy(resized.getBitmap(),newCanvas)
+                    cv.SetImageROI(newCanvas, (0, self.height, resized.width, resized.height))
+                    cv.Copy(resized.getBitmap(), newCanvas)
                     cv.ResetImageROI(newCanvas)
-                    retVal = Image(newCanvas,colorSpace=self._colorSpace)
+                    retVal = Image(newCanvas, colorSpace=self._colorSpace)
                 else:
                     nW = self.width
                     nH = self.height + image.height
-                    newCanvas = cv.CreateImage((nW,nH), cv.IPL_DEPTH_8U, 3)
+                    newCanvas = cv.CreateImage((nW, nH), cv.IPL_DEPTH_8U, 3)
                     cv.SetZero(newCanvas)
-                    cv.SetImageROI(newCanvas,(0,0,nW,self.height))
-                    cv.Copy(self.getBitmap(),newCanvas)
+                    cv.SetImageROI(newCanvas, (0, 0, nW, self.height))
+                    cv.Copy(self.getBitmap(), newCanvas)
                     cv.ResetImageROI(newCanvas)
                     xc = (self.width-image.width)/2
-                    cv.SetImageROI(newCanvas,(xc,self.height,image.width,image.height))
-                    cv.Copy(image.getBitmap(),newCanvas)
+                    cv.SetImageROI(newCanvas, (xc, self.height, image.width, image.height))
+                    cv.Copy(image.getBitmap(), newCanvas)
                     cv.ResetImageROI(newCanvas)
-                    retVal = Image(newCanvas,colorSpace=self._colorSpace)
+                    retVal = Image(newCanvas, colorSpace=self._colorSpace)
             else: #our width is smaller than the other image
-                if( scale ):
+                if scale:
                     #scale the other image width to fit
                     resized = self.resize(w=image.width)
                     nW = image.width
                     nH = resized.height + image.height
-                    newCanvas = cv.CreateImage((nW,nH), cv.IPL_DEPTH_8U, 3)
+                    newCanvas = cv.CreateImage((nW, nH), cv.IPL_DEPTH_8U, 3)
                     cv.SetZero(newCanvas)
-                    cv.SetImageROI(newCanvas,(0,0,resized.width,resized.height))
-                    cv.Copy(resized.getBitmap(),newCanvas)
+                    cv.SetImageROI(newCanvas, (0, 0, resized.width, resized.height))
+                    cv.Copy(resized.getBitmap(), newCanvas)
                     cv.ResetImageROI(newCanvas)
-                    cv.SetImageROI(newCanvas,(0,resized.height,nW,image.height))
-                    cv.Copy(image.getBitmap(),newCanvas)
+                    cv.SetImageROI(newCanvas, (0, resized.height, nW, image.height))
+                    cv.Copy(image.getBitmap(), newCanvas)
                     cv.ResetImageROI(newCanvas)
-                    retVal = Image(newCanvas,colorSpace=self._colorSpace)
+                    retVal = Image(newCanvas, colorSpace=self._colorSpace)
                 else:
                     nW = image.width
                     nH = self.height + image.height
-                    newCanvas = cv.CreateImage((nW,nH), cv.IPL_DEPTH_8U, 3)
+                    newCanvas = cv.CreateImage((nW, nH), cv.IPL_DEPTH_8U, 3)
                     cv.SetZero(newCanvas)
                     xc = (image.width - self.width)/2
-                    cv.SetImageROI(newCanvas,(xc,0,self.width,self.height))
-                    cv.Copy(self.getBitmap(),newCanvas)
+                    cv.SetImageROI(newCanvas, (xc, 0, self.width, self.height))
+                    cv.Copy(self.getBitmap(), newCanvas)
                     cv.ResetImageROI(newCanvas)
-                    cv.SetImageROI(newCanvas,(0,self.height,image.width,image.height))
-                    cv.Copy(image.getBitmap(),newCanvas)
+                    cv.SetImageROI(newCanvas, (0, self.height, image.width, image.height))
+                    cv.Copy(image.getBitmap(), newCanvas)
                     cv.ResetImageROI(newCanvas)
-                    retVal = Image(newCanvas,colorSpace=self._colorSpace)
+                    retVal = Image(newCanvas, colorSpace=self._colorSpace)
 
-        elif( side == "right" ):
-            retVal = image.sideBySide(self,"left",scale)
+        elif side == "right":
+            retVal = image.sideBySide(self, "left", scale)
         else: #default to left
-            if( self.height > image.height ):
-                if( scale ):
+            if self.height > image.height:
+                if scale:
                     #scale the other image height to fit
                     resized = image.resize(h=self.height)
                     nW = self.width + resized.width
                     nH = self.height
-                    newCanvas = cv.CreateImage((nW,nH), cv.IPL_DEPTH_8U, 3)
+                    newCanvas = cv.CreateImage((nW, nH), cv.IPL_DEPTH_8U, 3)
                     cv.SetZero(newCanvas)
-                    cv.SetImageROI(newCanvas,(0,0,resized.width,resized.height))
-                    cv.Copy(resized.getBitmap(),newCanvas)
+                    cv.SetImageROI(newCanvas, (0, 0, resized.width, resized.height))
+                    cv.Copy(resized.getBitmap(), newCanvas)
                     cv.ResetImageROI(newCanvas)
-                    cv.SetImageROI(newCanvas,(resized.width,0,self.width,self.height))
-                    cv.Copy(self.getBitmap(),newCanvas)
+                    cv.SetImageROI(newCanvas, (resized.width, 0, self.width, self.height))
+                    cv.Copy(self.getBitmap(), newCanvas)
                     cv.ResetImageROI(newCanvas)
-                    retVal = Image(newCanvas,colorSpace=self._colorSpace)
+                    retVal = Image(newCanvas, colorSpace=self._colorSpace)
                 else:
                     nW = self.width+image.width
                     nH = self.height
-                    newCanvas = cv.CreateImage((nW,nH), cv.IPL_DEPTH_8U, 3)
+                    newCanvas = cv.CreateImage((nW, nH), cv.IPL_DEPTH_8U, 3)
                     cv.SetZero(newCanvas)
                     yc = (self.height-image.height)/2
-                    cv.SetImageROI(newCanvas,(0,yc,image.width,image.height))
-                    cv.Copy(image.getBitmap(),newCanvas)
+                    cv.SetImageROI(newCanvas, (0, yc, image.width, image.height))
+                    cv.Copy(image.getBitmap(), newCanvas)
                     cv.ResetImageROI(newCanvas)
-                    cv.SetImageROI(newCanvas,(image.width,0,self.width,self.height))
-                    cv.Copy(self.getBitmap(),newCanvas)
+                    cv.SetImageROI(newCanvas, (image.width, 0, self.width, self.height))
+                    cv.Copy(self.getBitmap(), newCanvas)
                     cv.ResetImageROI(newCanvas)
-                    retVal = Image(newCanvas,colorSpace=self._colorSpace)
+                    retVal = Image(newCanvas, colorSpace=self._colorSpace)
             else: #our height is smaller than the other image
-                if( scale ):
+                if scale:
                     #scale our height to fit
                     resized = self.resize(h=image.height)
                     nW = image.width + resized.width
                     nH = image.height
-                    newCanvas = cv.CreateImage((nW,nH), cv.IPL_DEPTH_8U, 3)
+                    newCanvas = cv.CreateImage((nW, nH), cv.IPL_DEPTH_8U, 3)
                     cv.SetZero(newCanvas)
-                    cv.SetImageROI(newCanvas,(0,0,image.width,image.height))
-                    cv.Copy(image.getBitmap(),newCanvas)
+                    cv.SetImageROI(newCanvas, (0, 0, image.width, image.height))
+                    cv.Copy(image.getBitmap(), newCanvas)
                     cv.ResetImageROI(newCanvas)
-                    cv.SetImageROI(newCanvas,(image.width,0,resized.width,resized.height))
-                    cv.Copy(resized.getBitmap(),newCanvas)
+                    cv.SetImageROI(newCanvas, (image.width, 0, resized.width, resized.height))
+                    cv.Copy(resized.getBitmap(), newCanvas)
                     cv.ResetImageROI(newCanvas)
-                    retVal = Image(newCanvas,colorSpace=self._colorSpace)
+                    retVal = Image(newCanvas, colorSpace=self._colorSpace)
                 else:
                     nW = image.width + self.width
                     nH = image.height
-                    newCanvas = cv.CreateImage((nW,nH), cv.IPL_DEPTH_8U, 3)
+                    newCanvas = cv.CreateImage((nW, nH), cv.IPL_DEPTH_8U, 3)
                     cv.SetZero(newCanvas)
-                    cv.SetImageROI(newCanvas,(0,0,image.width,image.height))
-                    cv.Copy(image.getBitmap(),newCanvas)
+                    cv.SetImageROI(newCanvas, (0, 0, image.width, image.height))
+                    cv.Copy(image.getBitmap(), newCanvas)
                     cv.ResetImageROI(newCanvas)
                     yc = (image.height-self.height)/2
-                    cv.SetImageROI(newCanvas,(image.width,yc,self.width,self.height))
-                    cv.Copy(self.getBitmap(),newCanvas)
+                    cv.SetImageROI(newCanvas, (image.width, yc, self.width, self.height))
+                    cv.Copy(self.getBitmap(), newCanvas)
                     cv.ResetImageROI(newCanvas)
-                    retVal = Image(newCanvas,colorSpace=self._colorSpace)
+                    retVal = Image(newCanvas, colorSpace=self._colorSpace)
         return retVal
 
 
@@ -7078,7 +7050,7 @@ class Image:
 
         * *color* - the color of the canvas
 
-        * *pos* - the position of the top left corner of image on the new canvas,
+        * *pos* - the position of the top left corner of image on the new canvas, 
           if none the image is centered.
 
         **RETURNS**
@@ -7088,7 +7060,7 @@ class Image:
         **EXAMPLE**
 
         >>> img = Image("lenna")
-        >>> img = img.embiggen((1024,1024),color=Color.BLUE)
+        >>> img = img.embiggen((1024, 1024), color=Color.BLUE)
         >>> img.show()
 
         """
@@ -7097,68 +7069,68 @@ class Image:
           size = (self.width * size, self.height * size)
         
 
-        if( size == None or size[0] < self.width or size[1] < self.height ):
+        if size == None or size[0] < self.width or size[1] < self.height:
             logger.warning("image.embiggenCanvas: the size provided is invalid")
             return None
 
         newCanvas = cv.CreateImage(size, cv.IPL_DEPTH_8U, 3)
         cv.SetZero(newCanvas)
-        newColor = cv.RGB(color[0],color[1],color[2])
-        cv.AddS(newCanvas,newColor,newCanvas)
+        newColor = cv.RGB(color[0], color[1], color[2])
+        cv.AddS(newCanvas, newColor, newCanvas)
         topROI = None
         bottomROI = None
-        if( pos is None ):
-            pos = (((size[0]-self.width)/2),((size[1]-self.height)/2))
+        if pos is None:
+            pos = (((size[0]-self.width)/2), ((size[1]-self.height)/2))
 
-        (topROI, bottomROI) = self._rectOverlapROIs((self.width,self.height),size,pos)
+        (topROI, bottomROI) = self._rectOverlapROIs((self.width, self.height), size, pos)
         if( topROI is None or bottomROI is None):
             logger.warning("image.embiggenCanvas: the position of the old image doesn't make sense, there is no overlap")
             return None
 
         cv.SetImageROI(newCanvas, bottomROI)
-        cv.SetImageROI(self.getBitmap(),topROI)
-        cv.Copy(self.getBitmap(),newCanvas)
+        cv.SetImageROI(self.getBitmap(), topROI)
+        cv.Copy(self.getBitmap(), newCanvas)
         cv.ResetImageROI(newCanvas)
         cv.ResetImageROI(self.getBitmap())
         return Image(newCanvas)
 
 
 
-    def _rectOverlapROIs(self,top, bottom, pos):
+    def _rectOverlapROIs(self, top, bottom, pos):
         """
-        top is a rectangle (w,h)
-        bottom is a rectangle (w,h)
+        top is a rectangle (w, h)
+        bottom is a rectangle (w, h)
         pos is the top left corner of the top rectangle with respect to the bottom rectangle's top left corner
-        method returns none if the two rectangles do not overlap. Otherwise returns the top rectangle's ROI (x,y,w,h)
-        and the bottom rectangle's ROI (x,y,w,h)
+        method returns none if the two rectangles do not overlap. Otherwise returns the top rectangle's ROI (x, y, w, h)
+        and the bottom rectangle's ROI (x, y, w, h)
         """
-        # the position of the top rect coordinates give bottom top right = (0,0)
-        tr = (pos[0]+top[0],pos[1])
+        # the position of the top rect coordinates give bottom top right = (0, 0)
+        tr = (pos[0]+top[0], pos[1])
         tl = pos
-        br = (pos[0]+top[0],pos[1]+top[1])
-        bl = (pos[0],pos[1]+top[1])
+        br = (pos[0]+top[0], pos[1]+top[1])
+        bl = (pos[0], pos[1]+top[1])
         # do an overlap test to weed out corner cases and errors
-        def inBounds((w,h), (x,y)):
+        def inBounds((w, h), (x, y)):
             retVal = True
             if( x < 0 or  y < 0 or x > w or y > h):
                 retVal = False
             return retVal
 
-        trc = inBounds(bottom,tr)
-        tlc = inBounds(bottom,tl)
-        brc = inBounds(bottom,br)
-        blc = inBounds(bottom,bl)
-        if( not trc and not tlc and not brc and not blc ): # no overlap
-            return None,None
-        elif( trc and tlc and brc and blc ): # easy case top is fully inside bottom
-            tRet = (0,0,top[0],top[1])
-            bRet = (pos[0],pos[1],top[0],top[1])
-            return tRet,bRet
+        trc = inBounds(bottom, tr)
+        tlc = inBounds(bottom, tl)
+        brc = inBounds(bottom, br)
+        blc = inBounds(bottom, bl)
+        if not trc and not tlc and not brc and not blc: # no overlap
+            return None, None
+        elif trc and tlc and brc and blc: # easy case top is fully inside bottom
+            tRet = (0, 0, top[0], top[1])
+            bRet = (pos[0], pos[1], top[0], top[1])
+            return tRet, bRet
         # let's figure out where the top rectangle sits on the bottom
         # we clamp the corners of the top rectangle to live inside
-        # the bottom rectangle and from that get the x,y,w,h
-        tl = (np.clip(tl[0],0,bottom[0]),np.clip(tl[1],0,bottom[1]))
-        br = (np.clip(br[0],0,bottom[0]),np.clip(br[1],0,bottom[1]))
+        # the bottom rectangle and from that get the x, y, w, h
+        tl = (np.clip(tl[0], 0, bottom[0]), np.clip(tl[1], 0, bottom[1]))
+        br = (np.clip(br[0], 0, bottom[0]), np.clip(br[1], 0, bottom[1]))
 
         bx = tl[0]
         by = tl[1]
@@ -7168,19 +7140,19 @@ class Image:
         # we do the same thing with different coordinates
         pos = (-1*pos[0], -1*pos[1])
         #recalculate the bottoms's corners with respect to the top.
-        tr = (pos[0]+bottom[0],pos[1])
+        tr = (pos[0]+bottom[0], pos[1])
         tl = pos
-        br = (pos[0]+bottom[0],pos[1]+bottom[1])
-        bl = (pos[0],pos[1]+bottom[1])
-        tl = (np.clip(tl[0],0,top[0]), np.clip(tl[1],0,top[1]))
-        br = (np.clip(br[0],0,top[0]), np.clip(br[1],0,top[1]))
+        br = (pos[0]+bottom[0], pos[1]+bottom[1])
+        bl = (pos[0], pos[1]+bottom[1])
+        tl = (np.clip(tl[0], 0, top[0]), np.clip(tl[1], 0, top[1]))
+        br = (np.clip(br[0], 0, top[0]), np.clip(br[1], 0, top[1]))
         tx = tl[0]
         ty = tl[1]
         tw = abs(br[0]-tl[0])
         th = abs(br[1]-tl[1])
-        return (tx,ty,tw,th),(bx,by,bw,bh)
+        return (tx, ty, tw, th), (bx, by, bw, bh)
 
-    def createBinaryMask(self,color1=(0,0,0),color2=(255,255,255)):
+    def createBinaryMask(self, color1=(0, 0, 0), color2=(255, 255, 255)):
         """
         **SUMMARY**
 
@@ -7203,7 +7175,7 @@ class Image:
         **EXAMPLE**
 
         >>> img = Image("lenna")
-        >>> mask = img.createBinaryMask(color1=(0,128,128),color2=(255,255,255)
+        >>> mask = img.createBinaryMask(color1=(0, 128, 128), color2=(255, 255, 255)
         >>> mask.show()
 
         **SEE ALSO**
@@ -7240,60 +7212,60 @@ class Image:
         gh = self.getEmpty(1)
         bh = self.getEmpty(1)
 
-        cv.Split(self.getBitmap(),b,g,r,None);
+        cv.Split(self.getBitmap(), b, g, r, None);
         #the difference == 255 case is where open CV
         #kinda screws up, this should just be a white image
-        if( abs(color1[0]-color2[0]) == 255 ):
+        if abs(color1[0]-color2[0]) == 255:
             cv.Zero(rl)
-            cv.AddS(rl,255,rl)
+            cv.AddS(rl, 255, rl)
         #there is a corner case here where difference == 0
         #right now we throw an error on this case.
         #also we use the triplets directly as OpenCV is
         # SUPER FINICKY about the type of the threshold.
-        elif( color1[0] < color2[0] ):
-            cv.Threshold(r,rl,color1[0],255,cv.CV_THRESH_BINARY)
-            cv.Threshold(r,rh,color2[0],255,cv.CV_THRESH_BINARY)
-            cv.Sub(rl,rh,rl)
+        elif color1[0] < color2[0]:
+            cv.Threshold(r, rl, color1[0], 255, cv.CV_THRESH_BINARY)
+            cv.Threshold(r, rh, color2[0], 255, cv.CV_THRESH_BINARY)
+            cv.Sub(rl, rh, rl)
         else:
-            cv.Threshold(r,rl,color2[0],255,cv.CV_THRESH_BINARY)
-            cv.Threshold(r,rh,color1[0],255,cv.CV_THRESH_BINARY)
-            cv.Sub(rl,rh,rl)
+            cv.Threshold(r, rl, color2[0], 255, cv.CV_THRESH_BINARY)
+            cv.Threshold(r, rh, color1[0], 255, cv.CV_THRESH_BINARY)
+            cv.Sub(rl, rh, rl)
 
 
-        if( abs(color1[1]-color2[1]) == 255 ):
+        if abs(color1[1]-color2[1]) == 255:
             cv.Zero(gl)
-            cv.AddS(gl,255,gl)
-        elif( color1[1] < color2[1] ):
-            cv.Threshold(g,gl,color1[1],255,cv.CV_THRESH_BINARY)
-            cv.Threshold(g,gh,color2[1],255,cv.CV_THRESH_BINARY)
-            cv.Sub(gl,gh,gl)
+            cv.AddS(gl, 255, gl)
+        elif color1[1] < color2[1]:
+            cv.Threshold(g, gl, color1[1], 255, cv.CV_THRESH_BINARY)
+            cv.Threshold(g, gh, color2[1], 255, cv.CV_THRESH_BINARY)
+            cv.Sub(gl, gh, gl)
         else:
-            cv.Threshold(g,gl,color2[1],255,cv.CV_THRESH_BINARY)
-            cv.Threshold(g,gh,color1[1],255,cv.CV_THRESH_BINARY)
-            cv.Sub(gl,gh,gl)
+            cv.Threshold(g, gl, color2[1], 255, cv.CV_THRESH_BINARY)
+            cv.Threshold(g, gh, color1[1], 255, cv.CV_THRESH_BINARY)
+            cv.Sub(gl, gh, gl)
 
-        if( abs(color1[2]-color2[2]) == 255 ):
+        if abs(color1[2]-color2[2]) == 255:
             cv.Zero(bl)
-            cv.AddS(bl,255,bl)
-        elif( color1[2] < color2[2] ):
-            cv.Threshold(b,bl,color1[2],255,cv.CV_THRESH_BINARY)
-            cv.Threshold(b,bh,color2[2],255,cv.CV_THRESH_BINARY)
-            cv.Sub(bl,bh,bl)
+            cv.AddS(bl, 255, bl)
+        elif color1[2] < color2[2]:
+            cv.Threshold(b, bl, color1[2], 255, cv.CV_THRESH_BINARY)
+            cv.Threshold(b, bh, color2[2], 255, cv.CV_THRESH_BINARY)
+            cv.Sub(bl, bh, bl)
         else:
-            cv.Threshold(b,bl,color2[2],255,cv.CV_THRESH_BINARY)
-            cv.Threshold(b,bh,color1[2],255,cv.CV_THRESH_BINARY)
-            cv.Sub(bl,bh,bl)
+            cv.Threshold(b, bl, color2[2], 255, cv.CV_THRESH_BINARY)
+            cv.Threshold(b, bh, color1[2], 255, cv.CV_THRESH_BINARY)
+            cv.Sub(bl, bh, bl)
 
 
-        cv.And(rl,gl,rl)
-        cv.And(rl,bl,rl)
+        cv.And(rl, gl, rl)
+        cv.And(rl, bl, rl)
         return Image(rl)
 
-    def applyBinaryMask(self, mask,bg_color=Color.BLACK):
+    def applyBinaryMask(self, mask, bg_color=Color.BLACK):
         """
         **SUMMARY**
 
-        Apply a binary mask to the image. The white areas of the mask will be kept,
+        Apply a binary mask to the image. The white areas of the mask will be kept, 
         and the black areas removed. The removed areas will be set to the color of
         bg_color.
 
@@ -7309,7 +7281,7 @@ class Image:
         **EXAMPLE**
 
         >>> img = Image("lenna")
-        >>> mask = img.createBinaryMask(color1=(0,128,128),color2=(255,255,255)
+        >>> mask = img.createBinaryMask(color1=(0, 128, 128), color2=(255, 255, 255)
         >>> result = img.applyBinaryMask(mask)
         >>> result.show()
 
@@ -7322,17 +7294,17 @@ class Image:
         :py:meth:`threshold`
 
         """
-        newCanvas = cv.CreateImage((self.width,self.height), cv.IPL_DEPTH_8U, 3)
+        newCanvas = cv.CreateImage((self.width, self.height), cv.IPL_DEPTH_8U, 3)
         cv.SetZero(newCanvas)
-        newBG = cv.RGB(bg_color[0],bg_color[1],bg_color[2])
-        cv.AddS(newCanvas,newBG,newCanvas)
-        if( mask.width != self.width or mask.height != self.height ):
+        newBG = cv.RGB(bg_color[0], bg_color[1], bg_color[2])
+        cv.AddS(newCanvas, newBG, newCanvas)
+        if mask.width != self.width or mask.height != self.height:
             logger.warning("Image.applyBinaryMask: your mask and image don't match sizes, if the mask doesn't fit, you can't apply it! Try using the scale function. ")
             return None
-        cv.Copy(self.getBitmap(),newCanvas,mask.getBitmap());
-        return Image(newCanvas,colorSpace=self._colorSpace);
+        cv.Copy(self.getBitmap(), newCanvas, mask.getBitmap());
+        return Image(newCanvas, colorSpace=self._colorSpace);
 
-    def createAlphaMask(self, hue=60, hue_lb=None,hue_ub=None):
+    def createAlphaMask(self, hue=60, hue_lb=None, hue_ub=None):
         """
         **SUMMARY**
 
@@ -7342,8 +7314,8 @@ class Image:
         When a hue is used the mask is treated like an 8bit alpha channel.
         When an RGB triplet is used the result is a binary mask.
         rgb_thresh is a distance measure between a given a pixel and the mask value that we will
-        add to the mask. For example, if rgb_color=(0,255,0) and rgb_thresh=5 then any pixel
-        winthin five color values of the rgb_color will be added to the mask (e.g. (0,250,0),(5,255,0)....)
+        add to the mask. For example, if rgb_color=(0, 255, 0) and rgb_thresh=5 then any pixel
+        winthin five color values of the rgb_color will be added to the mask (e.g. (0, 250, 0), (5, 255, 0)....)
 
         Invert flips the mask values.
 
@@ -7359,7 +7331,7 @@ class Image:
         A grayscale alpha mask as a SimpleCV Image.
 
         >>> img = Image("lenna")
-        >>> mask = img.createAlphaMask(hue_lb=50,hue_ub=70)
+        >>> mask = img.createAlphaMask(hue_lb=50, hue_ub=70)
         >>> mask.show()
 
         **SEE ALSO**
@@ -7372,10 +7344,10 @@ class Image:
 
         """
 
-        if( hue<0 or hue > 180 ):
+        if hue<0 or hue > 180:
             logger.warning("Invalid hue color, valid hue range is 0 to 180.")
 
-        if( self._colorSpace != ColorSpace.HSV ):
+        if self._colorSpace != ColorSpace.HSV:
             hsv = self.toHSV()
         else:
             hsv = self
@@ -7383,14 +7355,14 @@ class Image:
         s = hsv.getEmpty(1)
         retVal = hsv.getEmpty(1)
         mask = hsv.getEmpty(1)
-        cv.Split(hsv.getBitmap(),h,None,s,None)
-        hlut = np.zeros((256,1),dtype=uint8) #thankfully we're not doing a LUT on saturation
+        cv.Split(hsv.getBitmap(), h, None, s, None)
+        hlut = np.zeros((256, 1), dtype=uint8) #thankfully we're not doing a LUT on saturation
         if(hue_lb is not None and hue_ub is not None):
             hlut[hue_lb:hue_ub]=255
         else:
             hlut[hue] = 255
-        cv.LUT(h,mask,cv.fromarray(hlut))
-        cv.Copy(s,retVal,mask) #we'll save memory using hue
+        cv.LUT(h, mask, cv.fromarray(hlut))
+        cv.Copy(s, retVal, mask) #we'll save memory using hue
         return Image(retVal)
 
 
@@ -7399,11 +7371,11 @@ class Image:
         **SUMMARY**
 
         apply a function to every pixel and return the result
-        The function must be of the form int (r,g,b)=func((r,g,b))
+        The function must be of the form int (r, g, b)=func((r, g, b))
 
         **PARAMETERS**
 
-        * *theFunc* - a function pointer to a function of the form (r,g.b) = theFunc((r,g,b))
+        * *theFunc* - a function pointer to a function of the form (r, g.b) = theFunc((r, g, b))
 
         **RETURNS**
 
@@ -7412,7 +7384,7 @@ class Image:
         **EXAMPLE**
 
         >>> def derp(pixels):
-        >>>     return (int(b*.2),int(r*.3),int(g*.5))
+        >>>     return (int(b*.2), int(r*.3), int(g*.5))
         >>>
         >>> img = Image("lenna")
         >>> img2 = img.applyPixelFunction(derp)
@@ -7421,12 +7393,12 @@ class Image:
         #there should be a way to do this faster using numpy vectorize
         #but I can get vectorize to work with the three channels together... have to split them
         #TODO: benchmark this against vectorize
-        pixels = np.array(self.getNumpy()).reshape(-1,3).tolist()
-        result = np.array(map(theFunc,pixels),dtype=uint8).reshape(self.width,self.height,3)
+        pixels = np.array(self.getNumpy()).reshape(-1, 3).tolist()
+        result = np.array(map(theFunc, pixels), dtype=uint8).reshape(self.width, self.height, 3)
         return Image(result)
 
 
-    def integralImage(self,tilted=False):
+    def integralImage(self, tilted=False):
         """
         **SUMMARY**
 
@@ -7458,14 +7430,14 @@ class Image:
         if(tilted):
             img2 = cv.CreateImage((self.width+1, self.height+1), cv.IPL_DEPTH_32F, 1)
             img3 = cv.CreateImage((self.width+1, self.height+1), cv.IPL_DEPTH_32F, 1)
-            cv.Integral(self._getGrayscaleBitmap(),img3,None,img2)
+            cv.Integral(self._getGrayscaleBitmap(), img3, None, img2)
         else:
             img2 = cv.CreateImage((self.width+1, self.height+1), cv.IPL_DEPTH_32F, 1)
-            cv.Integral(self._getGrayscaleBitmap(),img2)
+            cv.Integral(self._getGrayscaleBitmap(), img2)
         return np.array(cv.GetMat(img2))
 
 
-    def convolve(self,kernel = [[1,0,0],[0,1,0],[0,0,1]],center=None):
+    def convolve(self, kernel = [[1, 0, 0], [0, 1, 0], [0, 0, 1]], center=None):
         """
         **SUMMARY**
 
@@ -7484,7 +7456,7 @@ class Image:
         **EXAMPLE**
 
         >>> img = Image("sampleimages/simplecv.png")
-        >>> kernel = [[1,0,0],[0,1,0],[0,0,1]]
+        >>> kernel = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
         >>> conv = img.convolve()
 
         **SEE ALSO**
@@ -7500,16 +7472,16 @@ class Image:
             kernel = kernel.astype(np.float32)
             myKernel = cv.CreateMat(sz[0], sz[1], cv.CV_32FC1)
             cv.SetData(myKernel, kernel.tostring(), kernel.dtype.itemsize * kernel.shape[1])
-        elif(type(kernel)==cv.mat):
+        elif type(kernel)==cv.mat:
             myKernel = kernel
         else:
             logger.warning("Convolution uses numpy arrays or cv.mat type.")
             return None
         retVal = self.getEmpty(3)
         if(center is None):
-            cv.Filter2D(self.getBitmap(),retVal,myKernel)
+            cv.Filter2D(self.getBitmap(), retVal, myKernel)
         else:
-            cv.Filter2D(self.getBitmap(),retVal,myKernel,center)
+            cv.Filter2D(self.getBitmap(), retVal, myKernel, center)
         return Image(retVal)
 
     def findTemplate(self, template_image = None, threshold = 5, method = "SQR_DIFF_NORM", grayscale=True, rawmatches = False):
@@ -7555,7 +7527,7 @@ class Image:
         **EXAMPLE**
 
         >>> image = Image("/path/to/img.png")
-        >>> pattern_image = image.crop(100,100,100,100)
+        >>> pattern_image = image.crop(100, 100, 100, 100)
         >>> found_patterns = image.findTemplate(pattern_image)
         >>> found_patterns.draw()
         >>> image.show()
@@ -7581,23 +7553,23 @@ class Image:
         if(method is None or method == "" or method == "SQR_DIFF_NORM"):#minimal
             method = cv.CV_TM_SQDIFF_NORMED
             check = 1;
-        elif(method == "SQR_DIFF"): #minimal
+        elif method == "SQR_DIFF": #minimal
             method = cv.CV_TM_SQDIFF
             check = 1
-        elif(method == "CCOEFF"): #maximal
+        elif method == "CCOEFF": #maximal
             method = cv.CV_TM_CCOEFF
-        elif(method == "CCOEFF_NORM"): #maximal
+        elif method == "CCOEFF_NORM": #maximal
             method = cv.CV_TM_CCOEFF_NORMED
-        elif(method == "CCORR"): #maximal
+        elif method == "CCORR": #maximal
             method = cv.CV_TM_CCORR
-        elif(method == "CCORR_NORM"): #maximal
+        elif method == "CCORR_NORM": #maximal
             method = cv.CV_TM_CCORR_NORMED
         else:
             logger.warning("ooops.. I don't know what template matching method you are looking for.")
             return None
         #create new image for template matching computation
-        matches = cv.CreateMat( (self.height - template_image.height + 1),
-                                (self.width - template_image.width + 1),
+        matches = cv.CreateMat( (self.height - template_image.height + 1), 
+                                (self.width - template_image.width + 1), 
                                 cv.CV_32FC1)
 
         #choose template matching method to be used
@@ -7615,27 +7587,27 @@ class Image:
         mapped = map(tuple, np.column_stack(compute))
         fs = FeatureSet()
         for location in mapped:
-            fs.append(TemplateMatch(self, template_image, (location[1],location[0]), matches[location[0], location[1]]))
+            fs.append(TemplateMatch(self, template_image, (location[1], location[0]), matches[location[0], location[1]]))
 
         if (rawmatches):
             return fs
         #cluster overlapping template matches
         finalfs = FeatureSet()
-        if( len(fs) > 0 ):
+        if len(fs) > 0:
             finalfs.append(fs[0])
             for f in fs:
                 match = False
                 for f2 in finalfs:
-                    if( f2._templateOverlaps(f) ): #if they overlap
+                    if f2._templateOverlaps(f): #if they overlap
                         f2.consume(f) #merge them
                         match = True
                         break
 
-                if( not match ):
+                if not match:
                     finalfs.append(f)
 
             for f in finalfs: #rescale the resulting clusters to fit the template size
-                f.rescale(template_image.width,template_image.height)
+                f.rescale(template_image.width, template_image.height)
 
             fs = finalfs
 
@@ -7671,7 +7643,7 @@ class Image:
         **EXAMPLE**
 
         >>> image = Image("/path/to/img.png")
-        >>> pattern_image = image.crop(100,100,100,100)
+        >>> pattern_image = image.crop(100, 100, 100, 100)
         >>> found_patterns = image.findTemplateOnce(pattern_image)
         >>> found_patterns.draw()
         >>> image.show()
@@ -7697,23 +7669,23 @@ class Image:
         if(method is None or method == "" or method == "SQR_DIFF_NORM"):#minimal
             method = cv.CV_TM_SQDIFF_NORMED
             check = 1;
-        elif(method == "SQR_DIFF"): #minimal
+        elif method == "SQR_DIFF": #minimal
             method = cv.CV_TM_SQDIFF
             check = 1
-        elif(method == "CCOEFF"): #maximal
+        elif method == "CCOEFF": #maximal
             method = cv.CV_TM_CCOEFF
-        elif(method == "CCOEFF_NORM"): #maximal
+        elif method == "CCOEFF_NORM": #maximal
             method = cv.CV_TM_CCOEFF_NORMED
-        elif(method == "CCORR"): #maximal
+        elif method == "CCORR": #maximal
             method = cv.CV_TM_CCORR
-        elif(method == "CCORR_NORM"): #maximal
+        elif method == "CCORR_NORM": #maximal
             method = cv.CV_TM_CCORR_NORMED
         else:
             logger.warning("ooops.. I don't know what template matching method you are looking for.")
             return None
         #create new image for template matching computation
-        matches = cv.CreateMat( (self.height - template_image.height + 1),
-                                (self.width - template_image.width + 1),
+        matches = cv.CreateMat( (self.height - template_image.height + 1), 
+                                (self.width - template_image.width + 1), 
                                 cv.CV_32FC1)
 
         #choose template matching method to be used
@@ -7724,19 +7696,19 @@ class Image:
         mean = np.mean(matches)
         sd = np.std(matches)
         if(check > 0):
-            if( np.min(matches) <= threshold ):
+            if np.min(matches) <= threshold:
                 compute = np.where( matches == np.min(matches) )
             else:
                 return []
         else:
-            if( np.max(matches) >= threshold ):
+            if np.max(matches) >= threshold:
                 compute = np.where( matches == np.max(matches) )
             else:
                 return []
         mapped = map(tuple, np.column_stack(compute))
         fs = FeatureSet()
         for location in mapped:
-            fs.append(TemplateMatch(self, template_image, (location[1],location[0]), matches[location[0], location[1]]))
+            fs.append(TemplateMatch(self, template_image, (location[1], location[0]), matches[location[0], location[1]]))
 
         return fs
 
@@ -7764,7 +7736,7 @@ class Image:
 
         **NOTE**
 
-        If you're having run-time problems I feel bad for your son,
+        If you're having run-time problems I feel bad for your son, 
         I've got 99 problems but dependencies ain't one:
 
         http://code.google.com/p/tesseract-ocr/
@@ -7777,7 +7749,7 @@ class Image:
 
         api = tesseract.TessBaseAPI()
         api.SetOutputName("outputName")
-        api.Init(".","eng",tesseract.OEM_DEFAULT)
+        api.Init(".", "eng", tesseract.OEM_DEFAULT)
         api.SetPageSegMode(tesseract.PSM_AUTO)
 
 
@@ -7785,10 +7757,10 @@ class Image:
         self.getPIL().save(jpgdata, "jpeg")
         jpgdata.seek(0)
         stringbuffer = jpgdata.read()
-        result = tesseract.ProcessPagesBuffer(stringbuffer,len(stringbuffer),api)
+        result = tesseract.ProcessPagesBuffer(stringbuffer, len(stringbuffer), api)
         return result
 
-    def findCircle(self,canny=100,thresh=350,distance=-1):
+    def findCircle(self, canny=100, thresh=350, distance=-1):
         """
         **SUMMARY**
 
@@ -7824,18 +7796,18 @@ class Image:
         storage = cv.CreateMat(self.width, 1, cv.CV_32FC3)
         #a distnace metric for how apart our circles should be - this is sa good bench mark
         if(distance < 0 ):
-            distance = 1 + max(self.width,self.height)/50
-        cv.HoughCircles(self._getGrayscaleBitmap(),storage, cv.CV_HOUGH_GRADIENT, 2, distance,canny,thresh)
+            distance = 1 + max(self.width, self.height)/50
+        cv.HoughCircles(self._getGrayscaleBitmap(), storage, cv.CV_HOUGH_GRADIENT, 2, distance, canny, thresh)
         if storage.rows == 0:
             return None
         circs = np.asarray(storage)
         sz = circs.shape
         circleFS = FeatureSet()
         for i in range(sz[0]):
-            circleFS.append(Circle(self,int(circs[i][0][0]),int(circs[i][0][1]),int(circs[i][0][2])))
+            circleFS.append(Circle(self, int(circs[i][0][0]), int(circs[i][0][1]), int(circs[i][0][2])))
         return circleFS
 
-    def whiteBalance(self,method="Simple"):
+    def whiteBalance(self, method="Simple"):
         """
         **SUMMARY**
 
@@ -7877,17 +7849,17 @@ class Image:
             gf = float(avg[1])
             rf = float(avg[2])
             af = (bf+gf+rf)/3.0
-            if( bf == 0.00 ):
+            if bf == 0.00:
                 b_factor = 1.00
             else:
                 b_factor = af/bf
 
-            if( gf == 0.00 ):
+            if gf == 0.00:
                 g_factor = 1.00
             else:
                 g_factor = af/gf
 
-            if( rf == 0.00 ):
+            if rf == 0.00:
                 r_factor = 1.00
             else:
                 r_factor = af/rf
@@ -7900,30 +7872,30 @@ class Image:
             gfloat = cv.CreateImage((img.width, img.height), cv.IPL_DEPTH_32F, 1)
             rfloat = cv.CreateImage((img.width, img.height), cv.IPL_DEPTH_32F, 1)
 
-            cv.ConvertScale(b,bfloat,b_factor)
-            cv.ConvertScale(g,gfloat,g_factor)
-            cv.ConvertScale(r,rfloat,r_factor)
+            cv.ConvertScale(b, bfloat, b_factor)
+            cv.ConvertScale(g, gfloat, g_factor)
+            cv.ConvertScale(r, rfloat, r_factor)
 
-            (minB,maxB,minBLoc,maxBLoc) = cv.MinMaxLoc(bfloat)
-            (minG,maxG,minGLoc,maxGLoc) = cv.MinMaxLoc(gfloat)
-            (minR,maxR,minRLoc,maxRLoc) = cv.MinMaxLoc(rfloat)
-            scale = max([maxR,maxG,maxB])
+            (minB, maxB, minBLoc, maxBLoc) = cv.MinMaxLoc(bfloat)
+            (minG, maxG, minGLoc, maxGLoc) = cv.MinMaxLoc(gfloat)
+            (minR, maxR, minRLoc, maxRLoc) = cv.MinMaxLoc(rfloat)
+            scale = max([maxR, maxG, maxB])
             sfactor = 1.00
             if(scale > 255 ):
                 sfactor = 255.00/float(scale)
 
-            cv.ConvertScale(bfloat,b,sfactor);
-            cv.ConvertScale(gfloat,g,sfactor);
-            cv.ConvertScale(rfloat,r,sfactor);
+            cv.ConvertScale(bfloat, b, sfactor);
+            cv.ConvertScale(gfloat, g, sfactor);
+            cv.ConvertScale(rfloat, r, sfactor);
 
             retVal = img.getEmpty()
-            cv.Merge(b,g,r,None,retVal);
+            cv.Merge(b, g, r, None, retVal);
             retVal = Image(retVal)
-        elif( method == "Simple" ):
+        elif method == "Simple":
             thresh = 0.003
             sz = img.width*img.height
             tempMat = img.getNumpy()
-            bcf = sss.cumfreq(tempMat[:,:,0], numbins=256)
+            bcf = sss.cumfreq(tempMat[:, :, 0], numbins=256)
             bcf = bcf[0] # get our cumulative histogram of values for this color
 
             blb = -1 #our upper bound
@@ -7939,7 +7911,7 @@ class Image:
                 upper_thresh = (sz-bcf[bub])/sz
 
 
-            gcf = sss.cumfreq(tempMat[:,:,1], numbins=256)
+            gcf = sss.cumfreq(tempMat[:, :, 1], numbins=256)
             gcf = gcf[0]
             glb = -1 #our upper bound
             gub = 256 # our lower bound
@@ -7954,7 +7926,7 @@ class Image:
                 upper_thresh = (sz-gcf[gub])/sz
 
 
-            rcf = sss.cumfreq(tempMat[:,:,2], numbins=256)
+            rcf = sss.cumfreq(tempMat[:, :, 2], numbins=256)
             rcf = rcf[0]
             rlb = -1 #our upper bound
             rub = 256 # our lower bound
@@ -7975,35 +7947,35 @@ class Image:
             blbf = float(blb)
             bubf = float(bub)
 
-            rLUT = np.ones((256,1),dtype=uint8)
-            gLUT = np.ones((256,1),dtype=uint8)
-            bLUT = np.ones((256,1),dtype=uint8)
+            rLUT = np.ones((256, 1), dtype=uint8)
+            gLUT = np.ones((256, 1), dtype=uint8)
+            bLUT = np.ones((256, 1), dtype=uint8)
             for i in range(256):
                 if(i <= rlb):
                     rLUT[i][0] = 0
-                elif( i >= rub):
+                elif  i >= rub:
                     rLUT[i][0] = 255
                 else:
                     rf = ((float(i)-rlbf)*255.00/(rubf-rlbf))
                     rLUT[i][0] = int(rf)
                 if( i <= glb):
                     gLUT[i][0] = 0
-                elif( i >= gub):
+                elif  i >= gub:
                     gLUT[i][0] = 255
                 else:
                     gf = ((float(i)-glbf)*255.00/(gubf-glbf))
                     gLUT[i][0] = int(gf)
                 if( i <= blb):
                     bLUT[i][0] = 0
-                elif( i >= bub):
+                elif  i >= bub:
                     bLUT[i][0] = 255
                 else:
                     bf = ((float(i)-blbf)*255.00/(bubf-blbf))
                     bLUT[i][0] = int(bf)
-            retVal = img.applyLUT(bLUT,rLUT,gLUT)
+            retVal = img.applyLUT(bLUT, rLUT, gLUT)
         return retVal
 
-    def applyLUT(self,rLUT=None,bLUT=None,gLUT=None):
+    def applyLUT(self, rLUT=None, bLUT=None, gLUT=None):
         """
         **SUMMARY**
 
@@ -8030,7 +8002,7 @@ class Image:
 
         This example saturates the red channel:
 
-        >>> rlut = np.ones((256,1),dtype=uint8)*255
+        >>> rlut = np.ones((256, 1), dtype=uint8)*255
         >>> img=img.applyLUT(rLUT=rlut)
 
 
@@ -8043,19 +8015,19 @@ class Image:
         r = self.getEmpty(1)
         g = self.getEmpty(1)
         b = self.getEmpty(1)
-        cv.Split(self.getBitmap(),b,g,r,None);
+        cv.Split(self.getBitmap(), b, g, r, None);
         if(rLUT is not None):
-            cv.LUT(r,r,cv.fromarray(rLUT))
+            cv.LUT(r, r, cv.fromarray(rLUT))
         if(gLUT is not None):
-            cv.LUT(g,g,cv.fromarray(gLUT))
+            cv.LUT(g, g, cv.fromarray(gLUT))
         if(bLUT is not None):
-            cv.LUT(b,b,cv.fromarray(bLUT))
+            cv.LUT(b, b, cv.fromarray(bLUT))
         temp = self.getEmpty()
-        cv.Merge(b,g,r,None,temp)
+        cv.Merge(b, g, r, None, temp)
         return Image(temp)
 
 
-    def _getRawKeypoints(self,thresh=500.00,flavor="SURF", highQuality=1, forceReset=False):
+    def _getRawKeypoints(self, thresh=500.00, flavor="SURF", highQuality=1, forceReset=False):
         """
         .. _getRawKeypoints:
         This method finds keypoints in an image and returns them as the raw keypoints
@@ -8125,7 +8097,7 @@ class Image:
 
         Example:
         >>> img = Image("aerospace.jpg")
-        >>> kp,d = img._getRawKeypoints()
+        >>> kp, d = img._getRawKeypoints()
 
         Notes:
         If you would prefer to work with the raw keypoints and descriptors each image keeps
@@ -8137,10 +8109,10 @@ class Image:
         self._mKPFlavor = "NONE" # The flavor of the keypoints as a string.
 
         See Also:
-         ImageClass._getRawKeypoints(self,thresh=500.00,forceReset=False,flavor="SURF",highQuality=1)
-         ImageClass._getFLANNMatches(self,sd,td)
-         ImageClass.findKeypointMatch(self,template,quality=500.00,minDist=0.2,minMatch=0.4)
-         ImageClass.drawKeypointMatches(self,template,thresh=500.00,minDist=0.15,width=1)
+         ImageClass._getRawKeypoints(self, thresh=500.00, forceReset=False, flavor="SURF", highQuality=1)
+         ImageClass._getFLANNMatches(self, sd, td)
+         ImageClass.findKeypointMatch(self, template, quality=500.00, minDist=0.2, minMatch=0.4)
+         ImageClass.drawKeypointMatches(self, template, thresh=500.00, minDist=0.15, width=1)
 
         """
         try:
@@ -8149,13 +8121,13 @@ class Image:
             new_version = 0
             #For OpenCV versions till 2.4.0,  cv2.__versions__ are of the form "$Rev: 4557 $"
             if not ver.startswith('$Rev:'):
-                if int(ver.replace('.','0'))>=20400:
+                if int(ver.replace('.', '0'))>=20400:
                     new_version = 1
         except:
             warnings.warn("Can't run Keypoints without OpenCV >= 2.3.0")
             return (None, None)
 
-        if( forceReset ):
+        if forceReset:
             self._mKeyPoints = None
             self._mKPDescriptors = None
 
@@ -8218,7 +8190,7 @@ class Image:
             return (None, None)
         return (self._mKeyPoints, self._mKPDescriptors)
 
-    def _getFLANNMatches(self,sd,td):
+    def _getFLANNMatches(self, sd, td):
         """
         Summary:
         This method does a fast local approximate nearest neighbors (FLANN) calculation between two sets
@@ -8239,9 +8211,9 @@ class Image:
         The second one, dist, is the distance value for the closest match.
 
         Example:
-        >>> kpt,td = img1._getRawKeypoints() # t is template
-        >>> kps,sd = img2._getRawKeypoints() # s is source
-        >>> idx,dist = img1._getFLANNMatches(sd,td)
+        >>> kpt, td = img1._getRawKeypoints() # t is template
+        >>> kps, sd = img2._getRawKeypoints() # s is source
+        >>> idx, dist = img1._getFLANNMatches(sd, td)
         >>> j = idx[42]
         >>> print kps[j] # matches kp 42
         >>> print dist[i] # the match quality.
@@ -8256,11 +8228,11 @@ class Image:
         self._mKPFlavor = "NONE" # The flavor of the keypoints as a string.
 
         See:
-         ImageClass._getRawKeypoints(self,thresh=500.00,forceReset=False,flavor="SURF",highQuality=1)
-         ImageClass._getFLANNMatches(self,sd,td)
-         ImageClass.drawKeypointMatches(self,template,thresh=500.00,minDist=0.15,width=1)
-         ImageClass.findKeypoints(self,min_quality=300.00,flavor="SURF",highQuality=False )
-         ImageClass.findKeypointMatch(self,template,quality=500.00,minDist=0.2,minMatch=0.4)
+         ImageClass._getRawKeypoints(self, thresh=500.00, forceReset=False, flavor="SURF", highQuality=1)
+         ImageClass._getFLANNMatches(self, sd, td)
+         ImageClass.drawKeypointMatches(self, template, thresh=500.00, minDist=0.15, width=1)
+         ImageClass.findKeypoints(self, min_quality=300.00, flavor="SURF", highQuality=False )
+         ImageClass.findKeypointMatch(self, template, quality=500.00, minDist=0.2, minMatch=0.4)
         """
         try:
             import cv2
@@ -8272,9 +8244,9 @@ class Image:
         flann = cv2.flann_Index(sd, flann_params)
         idx, dist = flann.knnSearch(td, 1, params = {}) # bug: need to provide empty dict
         del flann
-        return idx,dist
+        return idx, dist
 
-    def drawKeypointMatches(self,template,thresh=500.00,minDist=0.15,width=1):
+    def drawKeypointMatches(self, template, thresh=500.00, minDist=0.15, width=1):
         """
         **SUMMARY**
 
@@ -8302,7 +8274,7 @@ class Image:
 
         >>> img = cam.getImage()
         >>> template = Image("myTemplate.png")
-        >>> result = img.drawKeypointMatches(self,template,300.00,0.4):
+        >>> result = img.drawKeypointMatches(self, template, 300.00, 0.4):
 
         **NOTES**
 
@@ -8324,31 +8296,31 @@ class Image:
         if template == None:
             return None
 
-        resultImg = template.sideBySide(self,scale=False)
+        resultImg = template.sideBySide(self, scale=False)
         hdif = (self.height-template.height)/2
-        skp,sd = self._getRawKeypoints(thresh)
-        tkp,td = template._getRawKeypoints(thresh)
-        if( td == None or sd == None ):
+        skp, sd = self._getRawKeypoints(thresh)
+        tkp, td = template._getRawKeypoints(thresh)
+        if td == None or sd == None:
             logger.warning("We didn't get any descriptors. Image might be too uniform or blurry." )
             return resultImg
         template_points = float(td.shape[0])
         sample_points = float(sd.shape[0])
         magic_ratio = 1.00
-        if( sample_points > template_points ):
+        if sample_points > template_points:
             magic_ratio = float(sd.shape[0])/float(td.shape[0])
 
-        idx,dist = self._getFLANNMatches(sd,td) # match our keypoint descriptors
-        p = dist[:,0]
+        idx, dist = self._getFLANNMatches(sd, td) # match our keypoint descriptors
+        p = dist[:, 0]
         result = p*magic_ratio < minDist #, = np.where( p*magic_ratio < minDist )
-        for i in range(0,len(idx)):
-            if( result[i] ):
+        for i in range(0, len(idx)):
+            if result[i]:
                 pt_a = (tkp[i].pt[1], tkp[i].pt[0]+hdif)
-                pt_b = (skp[idx[i]].pt[1]+template.width,skp[idx[i]].pt[0])
-                resultImg.drawLine(pt_a,pt_b,color=Color.getRandom(),thickness=width)
+                pt_b = (skp[idx[i]].pt[1]+template.width, skp[idx[i]].pt[0])
+                resultImg.drawLine(pt_a, pt_b, color=Color.getRandom(), thickness=width)
         return resultImg
 
 
-    def findKeypointMatch(self,template,quality=500.00,minDist=0.2,minMatch=0.4):
+    def findKeypointMatch(self, template, quality=500.00, minDist=0.2, minMatch=0.4):
         """
         **SUMMARY**
 
@@ -8390,7 +8362,7 @@ class Image:
         >>> template = Image("template.png")
         >>> img = camera.getImage()
         >>> fs = img.findKeypointMatch(template)
-        >>> if( fs is not None ):
+        >>> if fs is not None:
         >>>      fs.draw()
         >>>      img.show()
 
@@ -8421,41 +8393,41 @@ class Image:
         if template == None:
           return None
         fs = FeatureSet()
-        skp,sd = self._getRawKeypoints(quality)
-        tkp,td = template._getRawKeypoints(quality)
-        if( skp == None or tkp == None ):
+        skp, sd = self._getRawKeypoints(quality)
+        tkp, td = template._getRawKeypoints(quality)
+        if skp == None or tkp == None:
             warnings.warn("I didn't get any keypoints. Image might be too uniform or blurry." )
             return None
 
         template_points = float(td.shape[0])
         sample_points = float(sd.shape[0])
         magic_ratio = 1.00
-        if( sample_points > template_points ):
+        if sample_points > template_points:
             magic_ratio = float(sd.shape[0])/float(td.shape[0])
 
-        idx,dist = self._getFLANNMatches(sd,td) # match our keypoint descriptors
-        p = dist[:,0]
+        idx, dist = self._getFLANNMatches(sd, td) # match our keypoint descriptors
+        p = dist[:, 0]
         result = p*magic_ratio < minDist #, = np.where( p*magic_ratio < minDist )
         pr = result.shape[0]/float(dist.shape[0])
 
-        if( pr > minMatch and len(result)>4 ): # if more than minMatch % matches we go ahead and get the data
+        if pr > minMatch and len(result)>4: # if more than minMatch % matches we go ahead and get the data
             lhs = []
             rhs = []
-            for i in range(0,len(idx)):
-                if( result[i] ):
+            for i in range(0, len(idx)):
+                if result[i]:
                     lhs.append((tkp[i].pt[1], tkp[i].pt[0]))
                     rhs.append((skp[idx[i]].pt[0], skp[idx[i]].pt[1]))
             
             rhs_pt = np.array(rhs)
             lhs_pt = np.array(lhs)
-            if( len(rhs_pt) < 16 or len(lhs_pt) < 16 ):
+            if len(rhs_pt) < 16 or len(lhs_pt) < 16:
                 return None
             homography = []
-            (homography,mask) = cv2.findHomography(lhs_pt,rhs_pt,cv2.RANSAC, ransacReprojThreshold=1.0 )
+            (homography, mask) = cv2.findHomography(lhs_pt, rhs_pt, cv2.RANSAC, ransacReprojThreshold=1.0 )
             w = template.width
             h = template.height
             
-            pts = np.array([[0,0],[0,h],[w,h],[w,0]], dtype="float32")
+            pts = np.array([[0, 0], [0, h], [w, h], [w, 0]], dtype="float32")
             
             pPts = cv2.perspectiveTransform(np.array([pts]), homography)
             
@@ -8466,7 +8438,7 @@ class Image:
             
             #construct the feature set and return it.
             fs = FeatureSet() 
-            fs.append(KeypointMatch(self,template,(pt0i,pt1i,pt2i,pt3i),homography))
+            fs.append(KeypointMatch(self, template, (pt0i, pt1i, pt2i, pt3i), homography))
             #the homography matrix is necessary for many purposes like image stitching.
             #fs.append(homography) # No need to add homography as it is already being
             #added in KeyPointMatch class.
@@ -8475,7 +8447,7 @@ class Image:
             return None
 
 
-    def findKeypoints(self,min_quality=300.00,flavor="SURF",highQuality=False ):
+    def findKeypoints(self, min_quality=300.00, flavor="SURF", highQuality=False ):
         """
         **SUMMARY**
 
@@ -8551,7 +8523,7 @@ class Image:
         **EXAMPLE**
 
         >>> img = Image("aerospace.jpg")
-        >>> fs = img.findKeypoints(flavor="SURF",min_quality=500,highQuality=True)
+        >>> fs = img.findKeypoints(flavor="SURF", min_quality=500, highQuality=True)
         >>> fs = fs.sortArea()
         >>> fs[-1].draw()
         >>> img.draw()
@@ -8577,16 +8549,16 @@ class Image:
         kp = []
         d = []
         if highQuality:
-            kp,d = self._getRawKeypoints(thresh=min_quality,forceReset=True,flavor=flavor,highQuality=1)
+            kp, d = self._getRawKeypoints(thresh=min_quality, forceReset=True, flavor=flavor, highQuality=1)
         else:
-            kp,d = self._getRawKeypoints(thresh=min_quality,forceReset=True,flavor=flavor,highQuality=0)
+            kp, d = self._getRawKeypoints(thresh=min_quality, forceReset=True, flavor=flavor, highQuality=0)
 
-        if( flavor in ["ORB", "SIFT", "SURF", "BRISK", "FREAK"]  and kp!=None and d !=None ):
-            for i in range(0,len(kp)):
-                fs.append(KeyPoint(self,kp[i],d[i],flavor))
-        elif(flavor in ["FAST", "STAR", "MSER", "Dense"] and kp!=None ):
-            for i in range(0,len(kp)):
-                fs.append(KeyPoint(self,kp[i],None,flavor))
+        if flavor in ["ORB", "SIFT", "SURF", "BRISK", "FREAK"]  and kp!=None and d !=None:
+            for i in range(0, len(kp)):
+                fs.append(KeyPoint(self, kp[i], d[i], flavor))
+        elif flavor in ["FAST", "STAR", "MSER", "Dense"] and kp!=None :
+            for i in range(0, len(kp)):
+                fs.append(KeyPoint(self, kp[i], None, flavor))
         else:
             logger.warning("ImageClass.Keypoints: I don't know the method you want to use")
             return None
@@ -8646,7 +8618,7 @@ class Image:
             ver = cv2.__version__
             #For OpenCV versions till 2.4.0,  cv2.__versions__ are of the form "$Rev: 4557 $"
             if not ver.startswith('$Rev:') :
-                if int(ver.replace('.','0'))>=20400 :
+                if int(ver.replace('.', '0'))>=20400 :
                     FLAG_VER = 1
                     if (window > 9):
                         window = 9
@@ -8661,75 +8633,75 @@ class Image:
         fs = FeatureSet()
         max_mag = 0.00
 
-        if( method == "LK" or method == "HS" ):
+        if method == "LK" or method == "HS":
             # create the result images.
             xf = cv.CreateImage((self.width, self.height), cv.IPL_DEPTH_32F, 1)
             yf = cv.CreateImage((self.width, self.height), cv.IPL_DEPTH_32F, 1)
-            win = (window,window)
-            if( method == "LK" ):
-                cv.CalcOpticalFlowLK(self._getGrayscaleBitmap(),previous_frame._getGrayscaleBitmap(),win,xf,yf)
+            win = (window, window)
+            if method == "LK":
+                cv.CalcOpticalFlowLK(self._getGrayscaleBitmap(), previous_frame._getGrayscaleBitmap(), win, xf, yf)
             else:
-                cv.CalcOpticalFlowHS(previous_frame._getGrayscaleBitmap(),self._getGrayscaleBitmap(),0,xf,yf,1.0,(cv.CV_TERMCRIT_ITER | cv.CV_TERMCRIT_EPS, 10, 0.01))
+                cv.CalcOpticalFlowHS(previous_frame._getGrayscaleBitmap(), self._getGrayscaleBitmap(), 0, xf, yf, 1.0, (cv.CV_TERMCRIT_ITER | cv.CV_TERMCRIT_EPS, 10, 0.01))
 
             w = math.floor((float(window))/2.0)
             cx = ((self.width-window)/window)+1 #our sample rate
             cy = ((self.height-window)/window)+1
             vx = 0.00
             vy = 0.00
-            for x in range(0,int(cx)): # go through our sample grid
-                for y in range(0,int(cy)):
+            for x in range(0, int(cx)): # go through our sample grid
+                for y in range(0, int(cy)):
                     xi = (x*window)+w # calculate the sample point
                     yi = (y*window)+w
-                    if( aggregate ):
+                    if aggregate:
                         lowx = int(xi-w)
                         highx = int(xi+w)
                         lowy = int(yi-w)
                         highy = int(yi+w)
-                        xderp = xf[lowy:highy,lowx:highx] # get the average x/y components in the output
-                        yderp = yf[lowy:highy,lowx:highx]
+                        xderp = xf[lowy:highy, lowx:highx] # get the average x/y components in the output
+                        yderp = yf[lowy:highy, lowx:highx]
                         vx = np.average(xderp)
                         vy = np.average(yderp)
                     else: # other wise just sample
-                        vx = xf[yi,xi]
-                        vy = yf[yi,xi]
+                        vx = xf[yi, xi]
+                        vy = yf[yi, xi]
 
                     mag = (vx*vx)+(vy*vy)
                     if(mag > max_mag): # calculate the max magnitude for normalizing our vectors
                         max_mag = mag
-                    fs.append(Motion(self,xi,yi,vx,vy,window)) # add the sample to the feature set
+                    fs.append(Motion(self, xi, yi, vx, vy, window)) # add the sample to the feature set
 
-        elif( method == "BM"):
+        elif  method == "BM":
             # In the interest of keep the parameter list short
             # I am pegging these to the window size.
             # For versions with OpenCV 2.4.0 and below.
             if ( FLAG_VER==0):
-                block = (window,window) # block size
-                shift = (int(window*1.2),int(window*1.2)) # how far to shift the block
-                spread = (window*2,window*2) # the search windows.
+                block = (window, window) # block size
+                shift = (int(window*1.2), int(window*1.2)) # how far to shift the block
+                spread = (window*2, window*2) # the search windows.
                 wv = (self.width - block[0]) / shift[0] # the result image size
                 hv = (self.height - block[1]) / shift[1]
                 xf = cv.CreateMat(hv, wv, cv.CV_32FC1)
                 yf = cv.CreateMat(hv, wv, cv.CV_32FC1)
-                cv.CalcOpticalFlowBM(previous_frame._getGrayscaleBitmap(),self._getGrayscaleBitmap(),block,shift,spread,0,xf,yf)
+                cv.CalcOpticalFlowBM(previous_frame._getGrayscaleBitmap(), self._getGrayscaleBitmap(), block, shift, spread, 0, xf, yf)
 
             #For versions with OpenCV 2.4.0 and above.
             elif ( FLAG_VER==1) :
-                block = (window,window) # block size
-                shift = (int(window*0.2),int(window*0.2)) # how far to shift the block
-                spread = (window,window) # the search windows.
+                block = (window, window) # block size
+                shift = (int(window*0.2), int(window*0.2)) # how far to shift the block
+                spread = (window, window) # the search windows.
                 wv = self.width-block[0]+shift[0]
                 hv = self.height-block[1]+shift[1]
-                xf = cv.CreateImage((wv,hv), cv.IPL_DEPTH_32F, 1)
-                yf = cv.CreateImage((wv,hv), cv.IPL_DEPTH_32F, 1)
-                cv.CalcOpticalFlowBM(previous_frame._getGrayscaleBitmap(),self._getGrayscaleBitmap(),block,shift,spread,0,xf,yf)
+                xf = cv.CreateImage((wv, hv), cv.IPL_DEPTH_32F, 1)
+                yf = cv.CreateImage((wv, hv), cv.IPL_DEPTH_32F, 1)
+                cv.CalcOpticalFlowBM(previous_frame._getGrayscaleBitmap(), self._getGrayscaleBitmap(), block, shift, spread, 0, xf, yf)
 
-            for x in range(0,int(wv)): # go through the sample grid
-                for y in range(0,int(hv)):
+            for x in range(0, int(wv)): # go through the sample grid
+                for y in range(0, int(hv)):
                     xi = (shift[0]*(x))+block[0] #where on the input image the samples live
                     yi = (shift[1]*(y))+block[1]
-                    vx = xf[y,x] # the result image values
-                    vy = yf[y,x]
-                    fs.append(Motion(self,xi,yi,vx,vy,window)) # add the feature
+                    vx = xf[y, x] # the result image values
+                    vy = yf[y, x]
+                    fs.append(Motion(self, xi, yi, vx, vy, window)) # add the feature
                     mag = (vx*vx)+(vy*vy) # same the magnitude
                     if(mag > max_mag):
                         max_mag = mag
@@ -8745,11 +8717,11 @@ class Image:
 
 
 
-    def _generatePalette(self,bins,hue, centroids = None):
+    def _generatePalette(self, bins, hue, centroids = None):
         """
         **SUMMARY**
 
-        This is the main entry point for palette generation. A palette, for our purposes,
+        This is the main entry point for palette generation. A palette, for our purposes, 
         is a list of the main colors in an image. Creating a palette with 10 bins, tries
         to cluster the colors in rgb space into ten distinct groups. In hue space we only
         look at the hue channel. All of the relevant palette data is cached in the image
@@ -8788,10 +8760,10 @@ class Image:
 
         **SEE ALSO**
 
-        ImageClass.getPalette(self,bins=10,hue=False
-        ImageClass.rePalette(self,palette,hue=False):
-        ImageClass.drawPaletteColors(self,size=(-1,-1),horizontal=True,bins=10,hue=False)
-        ImageClass.palettize(self,bins=10,hue=False)
+        ImageClass.getPalette(self, bins=10, hue=False
+        ImageClass.rePalette(self, palette, hue=False):
+        ImageClass.drawPaletteColors(self, size=(-1, -1), horizontal=True, bins=10, hue=False)
+        ImageClass.palettize(self, bins=10, hue=False)
         ImageClass.binarizeFromPalette(self, palette_selection)
         ImageClass.findBlobsFromPalette(self, palette_selection, dilate = 0, minsize=5, maxsize=0)
         """
@@ -8800,50 +8772,50 @@ class Image:
             total = float(self.width*self.height)
             percentages = []
             result = None
-            if( not hue ):
+            if not hue:
                 pixels = np.array(self.getNumpy()).reshape(-1, 3)   #reshape our matrix to 1xN
-                if( centroids == None ):
-                    result = scv.kmeans(pixels,bins)
+                if centroids == None:
+                    result = scv.kmeans(pixels, bins)
                 else:
-                    if(isinstance(centroids,list)):
-                        centroids = np.array(centroids,dtype='uint8')
-                    result = scv.kmeans(pixels,centroids)
+                    if(isinstance(centroids, list)):
+                        centroids = np.array(centroids, dtype='uint8')
+                    result = scv.kmeans(pixels, centroids)
 
-                self._mPaletteMembers = scv.vq(pixels,result[0])[0]
+                self._mPaletteMembers = scv.vq(pixels, result[0])[0]
 
             else:
                 hsv = self
-                if( self._colorSpace != ColorSpace.HSV ):
+                if self._colorSpace != ColorSpace.HSV:
                     hsv = self.toHSV()
 
                 h = hsv.getEmpty(1)
-                cv.Split(hsv.getBitmap(),None,None,h,None)
+                cv.Split(hsv.getBitmap(), None, None, h, None)
                 mat =  cv.GetMat(h)
-                pixels = np.array(mat).reshape(-1,1)
+                pixels = np.array(mat).reshape(-1, 1)
 
-                if( centroids == None ):
-                    result = scv.kmeans(pixels,bins)
+                if centroids == None:
+                    result = scv.kmeans(pixels, bins)
                 else:
-                    if(isinstance( centroids,list)):
-                        centroids = np.array( centroids,dtype='uint8')
-                        centroids = centroids.reshape(centroids.shape[0],1)
-                    result = scv.kmeans(pixels,centroids)
+                    if(isinstance( centroids, list)):
+                        centroids = np.array( centroids, dtype='uint8')
+                        centroids = centroids.reshape(centroids.shape[0], 1)
+                    result = scv.kmeans(pixels, centroids)
 
-                self._mPaletteMembers = scv.vq(pixels,result[0])[0]
+                self._mPaletteMembers = scv.vq(pixels, result[0])[0]
 
 
-            for i in range(0,bins):
+            for i in range(0, bins):
                 count = np.where(self._mPaletteMembers==i)
                 v = float(count[0].shape[0])/total
                 percentages.append(v)
 
             self._mDoHuePalette = hue
             self._mPaletteBins = bins
-            self._mPalette = np.array(result[0],dtype='uint8')
+            self._mPalette = np.array(result[0], dtype='uint8')
             self._mPalettePercentages = percentages
 
 
-    def getPalette(self,bins=10,hue=False,centroids=None):
+    def getPalette(self, bins=10, hue=False, centroids=None):
         """
         **SUMMARY**
 
@@ -8885,11 +8857,11 @@ class Image:
         :py:meth:`findBlobsFromPalette`
 
         """
-        self._generatePalette(bins,hue,centroids)
+        self._generatePalette(bins, hue, centroids)
         return self._mPalette
 
 
-    def rePalette(self,palette,hue=False):
+    def rePalette(self, palette, hue=False):
         """
         **SUMMARY**
 
@@ -8927,41 +8899,41 @@ class Image:
         retVal = None
         if(hue):
             hsv = self
-            if( self._colorSpace != ColorSpace.HSV ):
+            if self._colorSpace != ColorSpace.HSV:
                 hsv = self.toHSV()
 
             h = hsv.getEmpty(1)
-            cv.Split(hsv.getBitmap(),None,None,h,None)
+            cv.Split(hsv.getBitmap(), None, None, h, None)
             mat =  cv.GetMat(h)
-            pixels = np.array(mat).reshape(-1,1)
-            result = scv.vq(pixels,palette)
+            pixels = np.array(mat).reshape(-1, 1)
+            result = scv.vq(pixels, palette)
             derp = palette[result[0]]
-            retVal = Image(derp[::-1].reshape(self.height,self.width)[::-1])
-            retVal = retVal.rotate(-90,fixed=False)
+            retVal = Image(derp[::-1].reshape(self.height, self.width)[::-1])
+            retVal = retVal.rotate(-90, fixed=False)
             retVal._mDoHuePalette = True
             retVal._mPaletteBins = len(palette)
             retVal._mPalette = palette
             retVal._mPaletteMembers = result[0]
 
         else:
-            result = scv.vq(self.getNumpy().reshape(-1,3),palette)
-            retVal = Image(palette[result[0]].reshape(self.width,self.height,3))
+            result = scv.vq(self.getNumpy().reshape(-1, 3), palette)
+            retVal = Image(palette[result[0]].reshape(self.width, self.height, 3))
             retVal._mDoHuePalette = False
             retVal._mPaletteBins = len(palette)
             retVal._mPalette = palette
             pixels = np.array(self.getNumpy()).reshape(-1, 3)
-            retVal._mPaletteMembers = scv.vq(pixels,palette)[0]
+            retVal._mPaletteMembers = scv.vq(pixels, palette)[0]
 
         percentages = []
         total = self.width*self.height
-        for i in range(0,len(palette)):
+        for i in range(0, len(palette)):
             count = np.where(self._mPaletteMembers==i)
             v = float(count[0].shape[0])/total
             percentages.append(v)
         self._mPalettePercentages = percentages
         return retVal
 
-    def drawPaletteColors(self,size=(-1,-1),horizontal=True,bins=10,hue=False):
+    def drawPaletteColors(self, size=(-1, -1), horizontal=True, bins=10, hue=False):
         """
         **SUMMARY**
 
@@ -8979,7 +8951,7 @@ class Image:
 
         * *bins* - an integer number of bins into which to divide the colors in the image.
         * *hue* - if hue is true we do only cluster on the image hue values.
-        * *size* - The size of the generated palette as a (width,height) tuple, if left default we select
+        * *size* - The size of the generated palette as a (width, height) tuple, if left default we select
           a size based on the image so it can be nicely displayed with the
           image.
         * *horizontal* - If true we orientate our palette horizontally, otherwise vertically.
@@ -8991,7 +8963,7 @@ class Image:
         **EXAMPLE**
 
         >>> p = img1.drawPaletteColors()
-        >>> img2 = img1.sideBySide(p,side="bottom")
+        >>> img2 = img1.sideBySide(p, side="bottom")
         >>> img2.show()
 
         **NOTES**
@@ -9014,76 +8986,76 @@ class Image:
         :py:meth:`findBlobsFromPalette`
 
         """
-        self._generatePalette(bins,hue)
+        self._generatePalette(bins, hue)
         retVal = None
-        if( not hue ):
-            if( horizontal ):
-                if( size[0] == -1 or size[1] == -1 ):
-                    size = (int(self.width),int(self.height*.1))
+        if not hue:
+            if horizontal:
+                if size[0] == -1 or size[1] == -1:
+                    size = (int(self.width), int(self.height*.1))
                 pal = cv.CreateImage(size, cv.IPL_DEPTH_8U, 3)
                 cv.Zero(pal)
                 idxL = 0
                 idxH = 0
-                for i in range(0,bins):
-                    idxH =np.clip(idxH+(self._mPalettePercentages[i]*float(size[0])),0,size[0]-1)
-                    roi = (int(idxL),0,int(idxH-idxL),size[1])
-                    cv.SetImageROI(pal,roi)
-                    color = np.array((float(self._mPalette[i][2]),float(self._mPalette[i][1]),float(self._mPalette[i][0])))
-                    cv.AddS(pal,color,pal)
+                for i in range(0, bins):
+                    idxH =np.clip(idxH+(self._mPalettePercentages[i]*float(size[0])), 0, size[0]-1)
+                    roi = (int(idxL), 0, int(idxH-idxL), size[1])
+                    cv.SetImageROI(pal, roi)
+                    color = np.array((float(self._mPalette[i][2]), float(self._mPalette[i][1]), float(self._mPalette[i][0])))
+                    cv.AddS(pal, color, pal)
                     cv.ResetImageROI(pal)
                     idxL = idxH
                 retVal = Image(pal)
             else:
-                if( size[0] == -1 or size[1] == -1 ):
-                    size = (int(self.width*.1),int(self.height))
+                if size[0] == -1 or size[1] == -1:
+                    size = (int(self.width*.1), int(self.height))
                 pal = cv.CreateImage(size, cv.IPL_DEPTH_8U, 3)
                 cv.Zero(pal)
                 idxL = 0
                 idxH = 0
-                for i in range(0,bins):
-                    idxH =np.clip(idxH+self._mPalettePercentages[i]*size[1],0,size[1]-1)
-                    roi = (0,int(idxL),size[0],int(idxH-idxL))
-                    cv.SetImageROI(pal,roi)
-                    color = np.array((float(self._mPalette[i][2]),float(self._mPalette[i][1]),float(self._mPalette[i][0])))
-                    cv.AddS(pal,color,pal)
+                for i in range(0, bins):
+                    idxH =np.clip(idxH+self._mPalettePercentages[i]*size[1], 0, size[1]-1)
+                    roi = (0, int(idxL), size[0], int(idxH-idxL))
+                    cv.SetImageROI(pal, roi)
+                    color = np.array((float(self._mPalette[i][2]), float(self._mPalette[i][1]), float(self._mPalette[i][0])))
+                    cv.AddS(pal, color, pal)
                     cv.ResetImageROI(pal)
                     idxL = idxH
                 retVal = Image(pal)
         else: # do hue
-            if( horizontal ):
-                if( size[0] == -1 or size[1] == -1 ):
-                    size = (int(self.width),int(self.height*.1))
+            if horizontal:
+                if size[0] == -1 or size[1] == -1:
+                    size = (int(self.width), int(self.height*.1))
                 pal = cv.CreateImage(size, cv.IPL_DEPTH_8U, 1)
                 cv.Zero(pal)
                 idxL = 0
                 idxH = 0
-                for i in range(0,bins):
-                    idxH =np.clip(idxH+(self._mPalettePercentages[i]*float(size[0])),0,size[0]-1)
-                    roi = (int(idxL),0,int(idxH-idxL),size[1])
-                    cv.SetImageROI(pal,roi)
-                    cv.AddS(pal,float(self._mPalette[i]),pal)
+                for i in range(0, bins):
+                    idxH =np.clip(idxH+(self._mPalettePercentages[i]*float(size[0])), 0, size[0]-1)
+                    roi = (int(idxL), 0, int(idxH-idxL), size[1])
+                    cv.SetImageROI(pal, roi)
+                    cv.AddS(pal, float(self._mPalette[i]), pal)
                     cv.ResetImageROI(pal)
                     idxL = idxH
                 retVal = Image(pal)
             else:
-                if( size[0] == -1 or size[1] == -1 ):
-                    size = (int(self.width*.1),int(self.height))
+                if size[0] == -1 or size[1] == -1:
+                    size = (int(self.width*.1), int(self.height))
                 pal = cv.CreateImage(size, cv.IPL_DEPTH_8U, 1)
                 cv.Zero(pal)
                 idxL = 0
                 idxH = 0
-                for i in range(0,bins):
-                    idxH =np.clip(idxH+self._mPalettePercentages[i]*size[1],0,size[1]-1)
-                    roi = (0,int(idxL),size[0],int(idxH-idxL))
-                    cv.SetImageROI(pal,roi)
-                    cv.AddS(pal,float(self._mPalette[i]),pal)
+                for i in range(0, bins):
+                    idxH =np.clip(idxH+self._mPalettePercentages[i]*size[1], 0, size[1]-1)
+                    roi = (0, int(idxL), size[0], int(idxH-idxL))
+                    cv.SetImageROI(pal, roi)
+                    cv.AddS(pal, float(self._mPalette[i]), pal)
                     cv.ResetImageROI(pal)
                     idxL = idxH
                 retVal = Image(pal)
 
         return retVal
 
-    def palettize(self,bins=10,hue=False,centroids=None):
+    def palettize(self, bins=10, hue=False, centroids=None):
         """
         **SUMMARY**
 
@@ -9128,17 +9100,17 @@ class Image:
 
         """
         retVal = None
-        self._generatePalette(bins,hue,centroids)
-        if( hue ):
+        self._generatePalette(bins, hue, centroids)
+        if hue:
             derp = self._mPalette[self._mPaletteMembers]
-            retVal = Image(derp[::-1].reshape(self.height,self.width)[::-1])
-            retVal = retVal.rotate(-90,fixed=False)
+            retVal = Image(derp[::-1].reshape(self.height, self.width)[::-1])
+            retVal = retVal.rotate(-90, fixed=False)
         else:
-            retVal = Image(self._mPalette[self._mPaletteMembers].reshape(self.width,self.height,3))
+            retVal = Image(self._mPalette[self._mPaletteMembers].reshape(self.width, self.height, 3))
         return retVal
 
 
-    def findBlobsFromPalette(self, palette_selection, dilate = 0, minsize=5, maxsize=0,appx_level=3):
+    def findBlobsFromPalette(self, palette_selection, dilate = 0, minsize=5, maxsize=0, appx_level=3):
         """
         **SUMMARY**
 
@@ -9167,7 +9139,7 @@ class Image:
 
         >>> img = Image("lenna")
         >>> p = img.getPalette()
-        >>> blobs = img.findBlobsFromPalette( (p[0],p[1],[6]) )
+        >>> blobs = img.findBlobsFromPalette( (p[0], p[1], [6]) )
         >>> blobs.draw()
         >>> img.show()
 
@@ -9185,7 +9157,7 @@ class Image:
         #we get the palette from find palete
         #ASSUME: GET PALLETE WAS CALLED!
         bwimg = self.binarizeFromPalette(palette_selection)
-        if( dilate > 0 ):
+        if dilate > 0:
             bwimg =bwimg.dilate(dilate)
 
         if (maxsize == 0):
@@ -9193,8 +9165,8 @@ class Image:
         #create a single channel image, thresholded to parameters
 
         blobmaker = BlobMaker()
-        blobs = blobmaker.extractFromBinary(bwimg,
-            self, minsize = minsize, maxsize = maxsize,appx_level=appx_level)
+        blobs = blobmaker.extractFromBinary(bwimg, 
+            self, minsize = minsize, maxsize = maxsize, appx_level=appx_level)
 
         if not len(blobs):
             return None
@@ -9223,7 +9195,7 @@ class Image:
 
         >>> img = Image("lenna")
         >>> p = img.getPalette()
-        >>> b = img.binarizeFromPalette( (p[0],p[1],[6]) )
+        >>> b = img.binarizeFromPalette( (p[0], p[1], [6]) )
         >>> b.show()
 
         **SEE ALSO**
@@ -9239,30 +9211,30 @@ class Image:
 
         #we get the palette from find palete
         #ASSUME: GET PALLETE WAS CALLED!
-        if( self._mPalette == None ):
+        if self._mPalette == None:
             logger.warning("Image.binarizeFromPalette: No palette exists, call getPalette())")
             return None
         retVal = None
         img = self.palettize(self._mPaletteBins, hue=self._mDoHuePalette)
-        if( not self._mDoHuePalette ):
+        if not self._mDoHuePalette:
             npimg = img.getNumpy()
-            white = np.array([255,255,255])
-            black = np.array([0,0,0])
+            white = np.array([255, 255, 255])
+            black = np.array([0, 0, 0])
 
             for p in palette_selection:
-                npimg = np.where(npimg != p,npimg,white)
+                npimg = np.where(npimg != p, npimg, white)
 
-            npimg = np.where(npimg != white,black,white)
+            npimg = np.where(npimg != white, black, white)
             retVal = Image(npimg)
         else:
-            npimg = img.getNumpy()[:,:,1]
+            npimg = img.getNumpy()[:, :, 1]
             white = np.array([255])
             black = np.array([0])
 
             for p in palette_selection:
-                npimg = np.where(npimg != p,npimg,white)
+                npimg = np.where(npimg != p, npimg, white)
 
-            npimg = np.where(npimg != white,black,white)
+            npimg = np.where(npimg != white, black, white)
             retVal = Image(npimg)
 
         return retVal
@@ -9304,11 +9276,11 @@ class Image:
         http://alexbw.posterous.com/
 
         """
-        img = self.toGray().getNumpy()[:,:,0]
+        img = self.toGray().getNumpy()[:, :, 0]
         distance_img = ndimage.distance_transform_edt(img)
         morph_laplace_img = ndimage.morphological_laplace(distance_img, (radius, radius))
         skeleton = morph_laplace_img < morph_laplace_img.min()/2
-        retVal = np.zeros([self.width,self.height])
+        retVal = np.zeros([self.width, self.height])
         retVal[skeleton] = 255
         return Image(retVal)
 
@@ -9325,33 +9297,33 @@ class Image:
         need not be a normal binary mask, it can have the normal white foreground and black
         background, but also a light and dark gray values that correspond to areas
         that are more likely to be foreground and more likely to be background. These
-        values can be found in the color class as Color.BACKGROUND, Color.FOREGROUND,
+        values can be found in the color class as Color.BACKGROUND, Color.FOREGROUND, 
         Color.MAYBE_BACKGROUND, and Color.MAYBE_FOREGROUND.
 
         **PARAMETERS**
 
         * *mask* - A grayscale mask the same size as the image using the 4 mask color values
-        * *rect* - A rectangle tuple of the form (x_position,y_position,width,height)
+        * *rect* - A rectangle tuple of the form (x_position, y_position, width, height)
 
         **RETURNS**
 
         A grayscale image with the foreground / background values assigned to:
 
-        * BACKGROUND = (0,0,0)
+        * BACKGROUND = (0, 0, 0)
 
-        * MAYBE_BACKGROUND = (64,64,64)
+        * MAYBE_BACKGROUND = (64, 64, 64)
 
-        * MAYBE_FOREGROUND =  (192,192,192)
+        * MAYBE_FOREGROUND =  (192, 192, 192)
 
-        * FOREGROUND = (255,255,255)
+        * FOREGROUND = (255, 255, 255)
 
         **EXAMPLE**
 
         >>> img = Image("RatTop.png")
-        >>> mask = Image((img.width,img.height))
-        >>> mask.dl().circle((100,100),80,color=Color.MAYBE_BACKGROUND,filled=True)
-        >>> mask.dl().circle((100,100),60,color=Color.MAYBE_FOREGROUND,filled=True)
-        >>> mask.dl().circle((100,100),40,color=Color.FOREGROUND,filled=True)
+        >>> mask = Image((img.width, img.height))
+        >>> mask.dl().circle((100, 100), 80, color=Color.MAYBE_BACKGROUND, filled=True)
+        >>> mask.dl().circle((100, 100), 60, color=Color.MAYBE_FOREGROUND, filled=True)
+        >>> mask.dl().circle((100, 100), 40, color=Color.FOREGROUND, filled=True)
         >>> mask = mask.applyLayers()
         >>> new_mask = img.smartThreshold(mask=mask)
         >>> new_mask.show()
@@ -9371,14 +9343,14 @@ class Image:
             logger.warning("Can't Do GrabCut without OpenCV >= 2.3.0")
             return
         retVal = []
-        if( mask is not None ):
+        if mask is not None:
             bmp = mask._getGrayscaleBitmap()
             # translate the human readable images to something opencv wants using a lut
-            LUT = np.zeros((256,1),dtype=uint8)
+            LUT = np.zeros((256, 1), dtype=uint8)
             LUT[255]=1
             LUT[64]=2
             LUT[192]=3
-            cv.LUT(bmp,bmp,cv.fromarray(LUT))
+            cv.LUT(bmp, bmp, cv.fromarray(LUT))
             mask_in = np.array(cv.GetMat(bmp))
             # get our image in a flavor grab cut likes
             npimg = np.array(cv.GetMat(self.getBitmap()))
@@ -9386,16 +9358,16 @@ class Image:
             tmp1 = np.zeros((1, 13 * 5))
             tmp2 = np.zeros((1, 13 * 5))
             # do the algorithm
-            cv2.grabCut(npimg,mask_in,None,tmp1,tmp2,10,mode=cv2.GC_INIT_WITH_MASK)
+            cv2.grabCut(npimg, mask_in, None, tmp1, tmp2, 10, mode=cv2.GC_INIT_WITH_MASK)
             # generate the output image
-            output = cv.CreateImageHeader((mask_in.shape[1],mask_in.shape[0]),cv.IPL_DEPTH_8U,1)
-            cv.SetData(output,mask_in.tostring(),mask_in.dtype.itemsize*mask_in.shape[1])
+            output = cv.CreateImageHeader((mask_in.shape[1], mask_in.shape[0]), cv.IPL_DEPTH_8U, 1)
+            cv.SetData(output, mask_in.tostring(), mask_in.dtype.itemsize*mask_in.shape[1])
             # remap the color space
-            LUT = np.zeros((256,1),dtype=uint8)
+            LUT = np.zeros((256, 1), dtype=uint8)
             LUT[1]=255
             LUT[2]=64
             LUT[3]=192
-            cv.LUT(output,output,cv.fromarray(LUT))
+            cv.LUT(output, output, cv.fromarray(LUT))
             # and create the return value
             mask._graybitmap = None # don't ask me why... but this gets corrupted
             retVal = Image(output)
@@ -9404,21 +9376,21 @@ class Image:
             npimg = np.array(cv.GetMat(self.getBitmap()))
             tmp1 = np.zeros((1, 13 * 5))
             tmp2 = np.zeros((1, 13 * 5))
-            mask = np.zeros((self.height,self.width),dtype='uint8')
-            cv2.grabCut(npimg,mask,rect,tmp1,tmp2,10,mode=cv2.GC_INIT_WITH_RECT)
-            bmp = cv.CreateImageHeader((mask.shape[1],mask.shape[0]),cv.IPL_DEPTH_8U,1)
-            cv.SetData(bmp,mask.tostring(),mask.dtype.itemsize*mask.shape[1])
-            LUT = np.zeros((256,1),dtype=uint8)
+            mask = np.zeros((self.height, self.width), dtype='uint8')
+            cv2.grabCut(npimg, mask, rect, tmp1, tmp2, 10, mode=cv2.GC_INIT_WITH_RECT)
+            bmp = cv.CreateImageHeader((mask.shape[1], mask.shape[0]), cv.IPL_DEPTH_8U, 1)
+            cv.SetData(bmp, mask.tostring(), mask.dtype.itemsize*mask.shape[1])
+            LUT = np.zeros((256, 1), dtype=uint8)
             LUT[1]=255
             LUT[2]=64
             LUT[3]=192
-            cv.LUT(bmp,bmp,cv.fromarray(LUT))
+            cv.LUT(bmp, bmp, cv.fromarray(LUT))
             retVal = Image(bmp)
         else:
             logger.warning( "ImageClass.findBlobsSmart requires either a mask or a selection rectangle. Failure to provide one of these causes your bytes to splinter and bit shrapnel to hit your pipeline making it asplode in a ball of fire. Okay... not really")
         return retVal
 
-    def smartFindBlobs(self,mask=None,rect=None,thresh_level=2,appx_level=3):
+    def smartFindBlobs(self, mask=None, rect=None, thresh_level=2, appx_level=3):
         """
         **SUMMARY**
 
@@ -9431,15 +9403,15 @@ class Image:
         need not be a normal binary mask, it can have the normal white foreground and black
         background, but also a light and dark gray values that correspond to areas
         that are more likely to be foreground and more likely to be background. These
-        values can be found in the color class as Color.BACKGROUND, Color.FOREGROUND,
+        values can be found in the color class as Color.BACKGROUND, Color.FOREGROUND, 
         Color.MAYBE_BACKGROUND, and Color.MAYBE_FOREGROUND.
 
         **PARAMETERS**
 
         * *mask* - A grayscale mask the same size as the image using the 4 mask color values
-        * *rect* - A rectangle tuple of the form (x_position,y_position,width,height)
+        * *rect* - A rectangle tuple of the form (x_position, y_position, width, height)
         * *thresh_level* - This represents what grab cut values to use in the mask after the
-          graph cut algorithm is run,
+          graph cut algorithm is run, 
 
           * 1  - means use the foreground, maybe_foreground, and maybe_background values
           * 2  - means use the foreground and maybe_foreground values.
@@ -9457,10 +9429,10 @@ class Image:
         **EXAMPLE**
 
         >>> img = Image("RatTop.png")
-        >>> mask = Image((img.width,img.height))
-        >>> mask.dl().circle((100,100),80,color=Color.MAYBE_BACKGROUND,filled=True
-        >>> mask.dl().circle((100,100),60,color=Color.MAYBE_FOREGROUND,filled=True)
-        >>> mask.dl().circle((100,100),40,color=Color.FOREGROUND,filled=True)
+        >>> mask = Image((img.width, img.height))
+        >>> mask.dl().circle((100, 100), 80, color=Color.MAYBE_BACKGROUND, filled=True
+        >>> mask.dl().circle((100, 100), 60, color=Color.MAYBE_FOREGROUND, filled=True)
+        >>> mask.dl().circle((100, 100), 40, color=Color.FOREGROUND, filled=True)
         >>> mask = mask.applyLayers()
         >>> blobs = img.smartFindBlobs(mask=mask)
         >>> blobs.draw()
@@ -9480,14 +9452,14 @@ class Image:
         retVal = None
 
         if result:
-            if( thresh_level ==  1 ):
+            if thresh_level ==  1:
                 result = result.threshold(192)
-            elif( thresh_level == 2):
+            elif  thresh_level == 2:
                 result = result.threshold(128)
-            elif( thresh_level > 2 ):
+            elif thresh_level > 2:
                 result = result.threshold(1)
             bm = BlobMaker()
-            retVal = bm.extractFromBinary(result,self,appx_level)
+            retVal = bm.extractFromBinary(result, self, appx_level)
 
         return retVal
 
@@ -9530,7 +9502,7 @@ class Image:
         return retVal
 
 
-    def floodFill(self,points,tolerance=None,color=Color.WHITE,lower=None,upper=None,fixed_range=True):
+    def floodFill(self, points, tolerance=None, color=Color.WHITE, lower=None, upper=None, fixed_range=True):
         """
         **SUMMARY**
 
@@ -9540,7 +9512,7 @@ class Image:
         tolerance, we will convert it to your color, otherwise the method will leave the pixel alone.
         The method accepts both single values, and triplet tuples for the tolerance values. If you
         require more control over your tolerance you can use the upper and lower values. The fixed
-        range parameter let's you toggle between setting the tolerance with repect to the seed pixel,
+        range parameter let's you toggle between setting the tolerance with repect to the seed pixel, 
         and using a tolerance that is relative to the adjacent pixels. If fixed_range is true the
         method will set its tolerance with respect to the seed pixel, otherwise the tolerance will
         be with repsect to adjacent pixels.
@@ -9567,7 +9539,7 @@ class Image:
         **EXAMPLE**
 
         >>> img = Image("lenna")
-        >>> img2 = img.floodFill(((10,10),(54,32)),tolerance=(10,10,10),color=Color.RED)
+        >>> img2 = img.floodFill(((10, 10), (54, 32)), tolerance=(10, 10, 10), color=Color.RED)
         >>> img2.show()
 
         **SEE ALSO**
@@ -9576,56 +9548,56 @@ class Image:
         :py:meth:`findFloodFillBlobs`
 
         """
-        if( isinstance(color,np.ndarray) ):
+        if isinstance(color, np.ndarray):
             color = color.tolist()
-        elif( isinstance(color,dict) ):
-            color = (color['R'],color['G'],color['B'])
+        elif isinstance(color, dict):
+            color = (color['R'], color['G'], color['B'])
 
-        if( isinstance(points,tuple) ):
+        if isinstance(points, tuple):
             points = np.array(points)
         # first we guess what the user wants to do
         # if we get and int/float convert it to a tuple
-        if( upper is None and lower is None and tolerance is None ):
-            upper = (0,0,0)
-            lower = (0,0,0)
+        if upper is None and lower is None and tolerance is None:
+            upper = (0, 0, 0)
+            lower = (0, 0, 0)
 
         if( tolerance is not None and
-            (isinstance(tolerance,float) or isinstance(tolerance,int))):
-            tolerance = (int(tolerance),int(tolerance),int(tolerance))
+            (isinstance(tolerance, float) or isinstance(tolerance, int))):
+            tolerance = (int(tolerance), int(tolerance), int(tolerance))
 
         if( lower is not None and
-            (isinstance(lower,float) or isinstance(lower, int)) ):
-            lower = (int(lower),int(lower),int(lower))
-        elif( lower is None ):
+            (isinstance(lower, float) or isinstance(lower, int)) ):
+            lower = (int(lower), int(lower), int(lower))
+        elif lower is None:
             lower = tolerance
 
         if( upper is not None and
-            (isinstance(upper,float) or isinstance(upper, int)) ):
-            upper = (int(upper),int(upper),int(upper))
-        elif( upper is None ):
+            (isinstance(upper, float) or isinstance(upper, int)) ):
+            upper = (int(upper), int(upper), int(upper))
+        elif upper is None:
             upper = tolerance
 
-        if( isinstance(points,tuple) ):
+        if isinstance(points, tuple):
             points = np.array(points)
 
         flags = 8
-        if( fixed_range ):
+        if fixed_range:
             flags = flags+cv.CV_FLOODFILL_FIXED_RANGE
 
         bmp = self.getEmpty()
-        cv.Copy(self.getBitmap(),bmp)
+        cv.Copy(self.getBitmap(), bmp)
 
-        if( len(points.shape) != 1 ):
+        if len(points.shape) != 1:
             for p in points:
-                cv.FloodFill(bmp,tuple(p),color,lower,upper,flags)
+                cv.FloodFill(bmp, tuple(p), color, lower, upper, flags)
         else:
-            cv.FloodFill(bmp,tuple(points),color,lower,upper,flags)
+            cv.FloodFill(bmp, tuple(points), color, lower, upper, flags)
 
         retVal = Image(bmp)
 
         return retVal
 
-    def floodFillToMask(self, points,tolerance=None,color=Color.WHITE,lower=None,upper=None,fixed_range=True,mask=None):
+    def floodFillToMask(self, points, tolerance=None, color=Color.WHITE, lower=None, upper=None, fixed_range=True, mask=None):
         """
         **SUMMARY**
 
@@ -9641,7 +9613,7 @@ class Image:
 
         The method accepts both single values, and triplet tuples for the tolerance values. If you
         require more control over your tolerance you can use the upper and lower values. The fixed
-        range parameter let's you toggle between setting the tolerance with repect to the seed pixel,
+        range parameter let's you toggle between setting the tolerance with repect to the seed pixel, 
         and using a tolerance that is relative to the adjacent pixels. If fixed_range is true the
         method will set its tolerance with respect to the seed pixel, otherwise the tolerance will
         be with repsect to adjacent pixels.
@@ -9671,7 +9643,7 @@ class Image:
 
         >>> img = Image("lenna")
         >>> mask = img.edges()
-        >>> mask= img.floodFillToMask(((10,10),(54,32)),tolerance=(10,10,10),mask=mask)
+        >>> mask= img.floodFillToMask(((10, 10), (54, 32)), tolerance=(10, 10, 10), mask=mask)
         >>> mask.show
 
         **SEE ALSO**
@@ -9682,64 +9654,64 @@ class Image:
         """
         mask_flag = 255 # flag weirdness
 
-        if( isinstance(color,np.ndarray) ):
+        if isinstance(color, np.ndarray):
             color = color.tolist()
-        elif( isinstance(color,dict) ):
-            color = (color['R'],color['G'],color['B'])
+        elif isinstance(color, dict):
+            color = (color['R'], color['G'], color['B'])
         
-        if( isinstance(points,tuple) ):
+        if isinstance(points, tuple):
             points = np.array(points)
 
         # first we guess what the user wants to do
         # if we get and int/float convert it to a tuple
-        if( upper is None and lower is None and tolerance is None ):
-            upper = (0,0,0)
-            lower = (0,0,0)
+        if upper is None and lower is None and tolerance is None:
+            upper = (0, 0, 0)
+            lower = (0, 0, 0)
 
         if( tolerance is not None and
-            (isinstance(tolerance,float) or isinstance(tolerance,int))):
-            tolerance = (int(tolerance),int(tolerance),int(tolerance))
+            (isinstance(tolerance, float) or isinstance(tolerance, int))):
+            tolerance = (int(tolerance), int(tolerance), int(tolerance))
 
         if( lower is not None and
-            (isinstance(lower,float) or isinstance(lower, int)) ):
-            lower = (int(lower),int(lower),int(lower))
-        elif( lower is None ):
+            (isinstance(lower, float) or isinstance(lower, int)) ):
+            lower = (int(lower), int(lower), int(lower))
+        elif lower is None:
             lower = tolerance
 
         if( upper is not None and
-            (isinstance(upper,float) or isinstance(upper, int)) ):
-            upper = (int(upper),int(upper),int(upper))
-        elif( upper is None ):
+            (isinstance(upper, float) or isinstance(upper, int)) ):
+            upper = (int(upper), int(upper), int(upper))
+        elif upper is None:
             upper = tolerance
 
-        if( isinstance(points,tuple) ):
+        if isinstance(points, tuple):
             points = np.array(points)
 
         flags = (mask_flag << 8 )+8
-        if( fixed_range ):
+        if fixed_range:
             flags = flags + cv.CV_FLOODFILL_FIXED_RANGE
 
         localMask = None
         #opencv wants a mask that is slightly larger
-        if( mask is None ):
-            localMask  = cv.CreateImage((self.width+2,self.height+2), cv.IPL_DEPTH_8U, 1)
+        if mask is None:
+            localMask  = cv.CreateImage((self.width+2, self.height+2), cv.IPL_DEPTH_8U, 1)
             cv.Zero(localMask)
         else:
-            localMask = mask.embiggen(size=(self.width+2,self.height+2))._getGrayscaleBitmap()
+            localMask = mask.embiggen(size=(self.width+2, self.height+2))._getGrayscaleBitmap()
 
         bmp = self.getEmpty()
-        cv.Copy(self.getBitmap(),bmp)
-        if( len(points.shape) != 1 ):
+        cv.Copy(self.getBitmap(), bmp)
+        if len(points.shape) != 1:
             for p in points:
-                cv.FloodFill(bmp,tuple(p),color,lower,upper,flags,localMask)
+                cv.FloodFill(bmp, tuple(p), color, lower, upper, flags, localMask)
         else:
-            cv.FloodFill(bmp,tuple(points),color,lower,upper,flags,localMask)
+            cv.FloodFill(bmp, tuple(points), color, lower, upper, flags, localMask)
 
         retVal = Image(localMask)
-        retVal = retVal.crop(1,1,self.width,self.height)
+        retVal = retVal.crop(1, 1, self.width, self.height)
         return retVal
 
-    def findBlobsFromMask(self, mask,threshold=128, minsize=10, maxsize=0,appx_level=3 ):
+    def findBlobsFromMask(self, mask, threshold=128, minsize=10, maxsize=0, appx_level=3 ):
         """
         **SUMMARY**
 
@@ -9783,7 +9755,7 @@ class Image:
         if (maxsize == 0):
             maxsize = self.width * self.height
         #create a single channel image, thresholded to parameters
-        if( mask.width != self.width or mask.height != self.height ):
+        if mask.width != self.width or mask.height != self.height:
             logger.warning("ImageClass.findBlobsFromMask - your mask does not match the size of your image")
             return None
 
@@ -9791,7 +9763,7 @@ class Image:
         gray = mask._getGrayscaleBitmap()
         result = mask.getEmpty(1)
         cv.Threshold(gray, result, threshold, 255, cv.CV_THRESH_BINARY)
-        blobs = blobmaker.extractFromBinary(Image(result), self, minsize = minsize, maxsize = maxsize,appx_level=appx_level)
+        blobs = blobmaker.extractFromBinary(Image(result), self, minsize = minsize, maxsize = maxsize, appx_level=appx_level)
 
         if not len(blobs):
             return None
@@ -9799,8 +9771,8 @@ class Image:
         return FeatureSet(blobs).sortArea()
 
 
-    def findFloodFillBlobs(self,points,tolerance=None,lower=None,upper=None,
-                           fixed_range=True,minsize=30,maxsize=-1):
+    def findFloodFillBlobs(self, points, tolerance=None, lower=None, upper=None, 
+                           fixed_range=True, minsize=30, maxsize=-1):
         """
 
         **SUMMARY**
@@ -9814,7 +9786,7 @@ class Image:
         tolerance, we will convert it to your color, otherwise the method will leave the pixel alone.
         The method accepts both single values, and triplet tuples for the tolerance values. If you
         require more control over your tolerance you can use the upper and lower values. The fixed
-        range parameter let's you toggle between setting the tolerance with repect to the seed pixel,
+        range parameter let's you toggle between setting the tolerance with repect to the seed pixel, 
         and using a tolerance that is relative to the adjacent pixels. If fixed_range is true the
         method will set its tolerance with respect to the seed pixel, otherwise the tolerance will
         be with repsect to adjacent pixels.
@@ -9846,7 +9818,7 @@ class Image:
         **EXAMPLE**
 
         >>> img = Image("lenna")
-        >>> blerbs = img.findFloodFillBlobs(((10,10),(20,20),(30,30)),tolerance=30)
+        >>> blerbs = img.findFloodFillBlobs(((10, 10), (20, 20), (30, 30)), tolerance=30)
         >>> blerbs.show()
 
         **SEE ALSO**
@@ -9855,8 +9827,8 @@ class Image:
         :py:meth:`floodFill`
 
         """
-        mask = self.floodFillToMask(points,tolerance,color=Color.WHITE,lower=lower,upper=upper,fixed_range=fixed_range)
-        return self.findBlobsFromMask(mask,minsize,maxsize)
+        mask = self.floodFillToMask(points, tolerance, color=Color.WHITE, lower=lower, upper=upper, fixed_range=fixed_range)
+        return self.findBlobsFromMask(mask, minsize, maxsize)
 
     def _doDFT(self, grayscale=False):
         """
@@ -9904,19 +9876,19 @@ class Image:
             dst = cv.CreateImage((width, height), cv.IPL_DEPTH_64F, 2)
             data = cv.CreateImage((width, height), cv.IPL_DEPTH_64F, 1)
             blank = cv.CreateImage((width, height), cv.IPL_DEPTH_64F, 1)
-            cv.ConvertScale(img,data,1.0)
+            cv.ConvertScale(img, data, 1.0)
             cv.Zero(blank)
-            cv.Merge(data,blank,None,None,src)
-            cv.Merge(data,blank,None,None,dst)
+            cv.Merge(data, blank, None, None, src)
+            cv.Merge(data, blank, None, None, dst)
             cv.DFT(src, dst, cv.CV_DXT_FORWARD)
             self._DFT.append(dst)
-        elif( not grayscale and (len(self._DFT) < 2 )):
+        elif  not grayscale and (len(self._DFT) < 2 ):
             self._DFT = []
             r = self.getEmpty(1)
             g = self.getEmpty(1)
             b = self.getEmpty(1)
-            cv.Split(self.getBitmap(),b,g,r,None)
-            chans = [b,g,r]
+            cv.Split(self.getBitmap(), b, g, r, None)
+            chans = [b, g, r]
             width = self.width
             height = self.height
             data = cv.CreateImage((width, height), cv.IPL_DEPTH_64F, 1)
@@ -9924,14 +9896,14 @@ class Image:
             src = cv.CreateImage((width, height), cv.IPL_DEPTH_64F, 2)
             for c in chans:
                 dst = cv.CreateImage((width, height), cv.IPL_DEPTH_64F, 2)
-                cv.ConvertScale(c,data,1.0)
+                cv.ConvertScale(c, data, 1.0)
                 cv.Zero(blank)
-                cv.Merge(data,blank,None,None,src)
-                cv.Merge(data,blank,None,None,dst)
+                cv.Merge(data, blank, None, None, src)
+                cv.Merge(data, blank, None, None, dst)
                 cv.DFT(src, dst, cv.CV_DXT_FORWARD)
                 self._DFT.append(dst)
 
-    def _getDFTClone(self,grayscale=False):
+    def _getDFTClone(self, grayscale=False):
         """
         **SUMMARY**
 
@@ -9968,17 +9940,17 @@ class Image:
         self._doDFT(grayscale)
         retVal = []
         if(grayscale):
-            gs = cv.CreateImage((self.width,self.height),cv.IPL_DEPTH_64F,2)
-            cv.Copy(self._DFT[0],gs)
+            gs = cv.CreateImage((self.width, self.height), cv.IPL_DEPTH_64F, 2)
+            cv.Copy(self._DFT[0], gs)
             retVal.append(gs)
         else:
             for img in self._DFT:
-                temp = cv.CreateImage((self.width,self.height),cv.IPL_DEPTH_64F,2)
-                cv.Copy(img,temp)
+                temp = cv.CreateImage((self.width, self.height), cv.IPL_DEPTH_64F, 2)
+                cv.Copy(img, temp)
                 retVal.append(temp)
         return retVal
 
-    def rawDFTImage(self,grayscale=False):
+    def rawDFTImage(self, grayscale=False):
         """
         **SUMMARY**
 
@@ -9986,7 +9958,7 @@ class Image:
         Each result image is a two channel 64f image where the first channel is the real
         component and the second channel is teh imaginary component. If the operation
         is performed on an RGB image and grayscale is False the result is a list of
-        these images of the form [b,g,r].
+        these images of the form [b, g, r].
 
         **PARAMETERS**
 
@@ -10027,7 +9999,7 @@ class Image:
         self._doDFT(grayscale)
         return self._DFT
 
-    def getDFTLogMagnitude(self,grayscale=False):
+    def getDFTLogMagnitude(self, grayscale=False):
         """
         **SUMMARY**
 
@@ -10079,15 +10051,15 @@ class Image:
         """
         dft = self._getDFTClone(grayscale)
         chans = []
-        if( grayscale ):
+        if grayscale:
             chans = [self.getEmpty(1)]
         else:
-            chans = [self.getEmpty(1),self.getEmpty(1),self.getEmpty(1)]
+            chans = [self.getEmpty(1), self.getEmpty(1), self.getEmpty(1)]
         data = cv.CreateImage((self.width, self.height), cv.IPL_DEPTH_64F, 1)
         blank = cv.CreateImage((self.width, self.height), cv.IPL_DEPTH_64F, 1)
 
-        for i in range(0,len(chans)):
-            cv.Split(dft[i],data,blank,None,None)
+        for i in range(0, len(chans)):
+            cv.Split(dft[i], data, blank, None, None)
             cv.Pow( data, data, 2.0)
             cv.Pow( blank, blank, 2.0)
             cv.Add( data, blank, data, None)
@@ -10096,29 +10068,29 @@ class Image:
             cv.Log( data, data ) # log(1 + Mag
             min, max, pt1, pt2 = cv.MinMaxLoc(data)
             cv.Scale(data, data, 1.0/(max-min), 1.0*(-min)/(max-min))
-            cv.Mul(data,data,data,255.0)
-            cv.Convert(data,chans[i])
+            cv.Mul(data, data, data, 255.0)
+            cv.Convert(data, chans[i])
 
         retVal = None
-        if( grayscale ):
+        if grayscale:
             retVal = Image(chans[0])
         else:
             retVal = self.getEmpty()
-            cv.Merge(chans[0],chans[1],chans[2],None,retVal)
+            cv.Merge(chans[0], chans[1], chans[2], None, retVal)
             retVal = Image(retVal)
         return retVal
 
     def _boundsFromPercentage(self, floatVal, bound):
-        return np.clip(int(floatVal*bound),0,bound)
+        return np.clip(int(floatVal*bound), 0, bound)
 
-    def applyDFTFilter(self,flt,grayscale=False):
+    def applyDFTFilter(self, flt, grayscale=False):
         """
         **SUMMARY**
 
         This function allows you to apply an arbitrary filter to the DFT of an image.
         This filter takes in a gray scale image, whiter values are kept and black values
         are rejected. In the DFT image, the lower frequency values are in the corners
-        of the image, while the higher frequency components are in the center. For example,
+        of the image, while the higher frequency components are in the center. For example, 
         a low pass filter has white squares in the corners and is black everywhere else.
 
         **PARAMETERS**
@@ -10168,36 +10140,36 @@ class Image:
             flt.height != self.height ):
             logger.warning("Image.applyDFTFilter - Your filter must match the size of the image")
         dft = []
-        if( grayscale ):
+        if grayscale:
             dft = self._getDFTClone(grayscale)
             flt = flt._getGrayscaleBitmap()
-            flt64f = cv.CreateImage((flt.width,flt.height),cv.IPL_DEPTH_64F,1)
-            cv.ConvertScale(flt,flt64f,1.0)
-            finalFilt = cv.CreateImage((flt.width,flt.height),cv.IPL_DEPTH_64F,2)
-            cv.Merge(flt64f,flt64f,None,None,finalFilt)
+            flt64f = cv.CreateImage((flt.width, flt.height), cv.IPL_DEPTH_64F, 1)
+            cv.ConvertScale(flt, flt64f, 1.0)
+            finalFilt = cv.CreateImage((flt.width, flt.height), cv.IPL_DEPTH_64F, 2)
+            cv.Merge(flt64f, flt64f, None, None, finalFilt)
             for d in dft:
-                cv.MulSpectrums(d,finalFilt,d,0)
+                cv.MulSpectrums(d, finalFilt, d, 0)
         else: #break down the filter and then do each channel
             dft = self._getDFTClone(grayscale)
             flt = flt.getBitmap()
-            b = cv.CreateImage((flt.width,flt.height),cv.IPL_DEPTH_8U,1)
-            g = cv.CreateImage((flt.width,flt.height),cv.IPL_DEPTH_8U,1)
-            r = cv.CreateImage((flt.width,flt.height),cv.IPL_DEPTH_8U,1)
-            cv.Split(flt,b,g,r,None)
-            chans = [b,g,r]
-            for c in range(0,len(chans)):
-                flt64f = cv.CreateImage((chans[c].width,chans[c].height),cv.IPL_DEPTH_64F,1)
-                cv.ConvertScale(chans[c],flt64f,1.0)
-                finalFilt = cv.CreateImage((chans[c].width,chans[c].height),cv.IPL_DEPTH_64F,2)
-                cv.Merge(flt64f,flt64f,None,None,finalFilt)
-                cv.MulSpectrums(dft[c],finalFilt,dft[c],0)
+            b = cv.CreateImage((flt.width, flt.height), cv.IPL_DEPTH_8U, 1)
+            g = cv.CreateImage((flt.width, flt.height), cv.IPL_DEPTH_8U, 1)
+            r = cv.CreateImage((flt.width, flt.height), cv.IPL_DEPTH_8U, 1)
+            cv.Split(flt, b, g, r, None)
+            chans = [b, g, r]
+            for c in range(0, len(chans)):
+                flt64f = cv.CreateImage((chans[c].width, chans[c].height), cv.IPL_DEPTH_64F, 1)
+                cv.ConvertScale(chans[c], flt64f, 1.0)
+                finalFilt = cv.CreateImage((chans[c].width, chans[c].height), cv.IPL_DEPTH_64F, 2)
+                cv.Merge(flt64f, flt64f, None, None, finalFilt)
+                cv.MulSpectrums(dft[c], finalFilt, dft[c], 0)
 
         return self._inverseDFT(dft)
 
     def _boundsFromPercentage(self, floatVal, bound):
-        return np.clip(int(floatVal*(bound/2.00)),0,(bound/2))
+        return np.clip(int(floatVal*(bound/2.00)), 0, (bound/2))
 
-    def highPassFilter(self, xCutoff,yCutoff=None,grayscale=False):
+    def highPassFilter(self, xCutoff, yCutoff=None, grayscale=False):
         """
         **SUMMARY**
 
@@ -10212,8 +10184,8 @@ class Image:
         **PARAMETERS**
 
         * *xCutoff* - The horizontal frequency at which we perform the cutoff. A separate
-          frequency can be used for the b,g, and r signals by providing a
-          list of values. The frequency is defined between zero to one,
+          frequency can be used for the b, g, and r signals by providing a
+          list of values. The frequency is defined between zero to one, 
           where zero is constant component and 1 is the highest possible
           frequency in the image.
 
@@ -10233,7 +10205,7 @@ class Image:
 
         >>> img = Image("SimpleCV/sampleimages/RedDog2.jpg")
         >>> img.getDFTLogMagnitude().show()
-        >>> hpf = img.highPassFilter([0.2,0.1,0.2])
+        >>> hpf = img.highPassFilter([0.2, 0.1, 0.2])
         >>> hpf.show()
         >>> hpf.getDFTLogMagnitude().show()
 
@@ -10258,61 +10230,61 @@ class Image:
         :py:meth:`applyUnsharpMask`
 
         """
-        if( isinstance(xCutoff,float) ):
-            xCutoff = [xCutoff,xCutoff,xCutoff]
-        if( isinstance(yCutoff,float) ):
-            yCutoff = [yCutoff,yCutoff,yCutoff]
+        if isinstance(xCutoff, float):
+            xCutoff = [xCutoff, xCutoff, xCutoff]
+        if isinstance(yCutoff, float):
+            yCutoff = [yCutoff, yCutoff, yCutoff]
         if(yCutoff is None):
-            yCutoff = [xCutoff[0],xCutoff[1],xCutoff[2]]
+            yCutoff = [xCutoff[0], xCutoff[1], xCutoff[2]]
 
-        for i in range(0,len(xCutoff)):
-            xCutoff[i] = self._boundsFromPercentage(xCutoff[i],self.width)
-            yCutoff[i] = self._boundsFromPercentage(yCutoff[i],self.height)
+        for i in range(0, len(xCutoff)):
+            xCutoff[i] = self._boundsFromPercentage(xCutoff[i], self.width)
+            yCutoff[i] = self._boundsFromPercentage(yCutoff[i], self.height)
 
         filter = None
         h  = self.height
         w  = self.width
 
-        if( grayscale ):
-            filter = cv.CreateImage((self.width,self.height),cv.IPL_DEPTH_8U,1)
+        if grayscale:
+            filter = cv.CreateImage((self.width, self.height), cv.IPL_DEPTH_8U, 1)
             cv.Zero(filter)
-            cv.AddS(filter,255,filter) # make everything white
+            cv.AddS(filter, 255, filter) # make everything white
             #now make all of the corners black
-            cv.Rectangle(filter,(0,0),(xCutoff[0],yCutoff[0]),(0,0,0),thickness=-1) #TL
-            cv.Rectangle(filter,(0,h-yCutoff[0]),(xCutoff[0],h),(0,0,0),thickness=-1) #BL
-            cv.Rectangle(filter,(w-xCutoff[0],0),(w,yCutoff[0]),(0,0,0),thickness=-1) #TR
-            cv.Rectangle(filter,(w-xCutoff[0],h-yCutoff[0]),(w,h),(0,0,0),thickness=-1) #BR
+            cv.Rectangle(filter, (0, 0), (xCutoff[0], yCutoff[0]), (0, 0, 0), thickness=-1) #TL
+            cv.Rectangle(filter, (0, h-yCutoff[0]), (xCutoff[0], h), (0, 0, 0), thickness=-1) #BL
+            cv.Rectangle(filter, (w-xCutoff[0], 0), (w, yCutoff[0]), (0, 0, 0), thickness=-1) #TR
+            cv.Rectangle(filter, (w-xCutoff[0], h-yCutoff[0]), (w, h), (0, 0, 0), thickness=-1) #BR
 
         else:
             #I need to looking into CVMERGE/SPLIT... I would really need to know
             # how much memory we're allocating here
-            filterB = cv.CreateImage((self.width,self.height),cv.IPL_DEPTH_8U,1)
-            filterG = cv.CreateImage((self.width,self.height),cv.IPL_DEPTH_8U,1)
-            filterR = cv.CreateImage((self.width,self.height),cv.IPL_DEPTH_8U,1)
+            filterB = cv.CreateImage((self.width, self.height), cv.IPL_DEPTH_8U, 1)
+            filterG = cv.CreateImage((self.width, self.height), cv.IPL_DEPTH_8U, 1)
+            filterR = cv.CreateImage((self.width, self.height), cv.IPL_DEPTH_8U, 1)
             cv.Zero(filterB)
             cv.Zero(filterG)
             cv.Zero(filterR)
-            cv.AddS(filterB,255,filterB) # make everything white
-            cv.AddS(filterG,255,filterG) # make everything whit
-            cv.AddS(filterR,255,filterR) # make everything white
+            cv.AddS(filterB, 255, filterB) # make everything white
+            cv.AddS(filterG, 255, filterG) # make everything whit
+            cv.AddS(filterR, 255, filterR) # make everything white
             #now make all of the corners black
-            temp = [filterB,filterG,filterR]
+            temp = [filterB, filterG, filterR]
             i = 0
             for f in temp:
-                cv.Rectangle(f,(0,0),(xCutoff[i],yCutoff[i]),0,thickness=-1)
-                cv.Rectangle(f,(0,h-yCutoff[i]),(xCutoff[i],h),0,thickness=-1)
-                cv.Rectangle(f,(w-xCutoff[i],0),(w,yCutoff[i]),0,thickness=-1)
-                cv.Rectangle(f,(w-xCutoff[i],h-yCutoff[i]),(w,h),0,thickness=-1)
+                cv.Rectangle(f, (0, 0), (xCutoff[i], yCutoff[i]), 0, thickness=-1)
+                cv.Rectangle(f, (0, h-yCutoff[i]), (xCutoff[i], h), 0, thickness=-1)
+                cv.Rectangle(f, (w-xCutoff[i], 0), (w, yCutoff[i]), 0, thickness=-1)
+                cv.Rectangle(f, (w-xCutoff[i], h-yCutoff[i]), (w, h), 0, thickness=-1)
                 i = i+1
 
-            filter = cv.CreateImage((self.width,self.height),cv.IPL_DEPTH_8U,3)
-            cv.Merge(filterB,filterG,filterR,None,filter)
+            filter = cv.CreateImage((self.width, self.height), cv.IPL_DEPTH_8U, 3)
+            cv.Merge(filterB, filterG, filterR, None, filter)
 
         scvFilt = Image(filter)
-        retVal = self.applyDFTFilter(scvFilt,grayscale)
+        retVal = self.applyDFTFilter(scvFilt, grayscale)
         return retVal
 
-    def lowPassFilter(self, xCutoff,yCutoff=None,grayscale=False):
+    def lowPassFilter(self, xCutoff, yCutoff=None, grayscale=False):
         """
         **SUMMARY**
 
@@ -10327,8 +10299,8 @@ class Image:
         **PARAMETERS**
 
         * *xCutoff* - The horizontal frequency at which we perform the cutoff. A separate
-          frequency can be used for the b,g, and r signals by providing a
-          list of values. The frequency is defined between zero to one,
+          frequency can be used for the b, g, and r signals by providing a
+          list of values. The frequency is defined between zero to one, 
           where zero is constant component and 1 is the highest possible
           frequency in the image.
 
@@ -10348,7 +10320,7 @@ class Image:
 
         >>> img = Image("SimpleCV/sampleimages/RedDog2.jpg")
         >>> img.getDFTLogMagnitude().show()
-        >>> lpf = img.lowPassFilter([0.2,0.2,0.05])
+        >>> lpf = img.lowPassFilter([0.2, 0.2, 0.05])
         >>> lpf.show()
         >>> lpf.getDFTLogMagnitude().show()
 
@@ -10373,62 +10345,62 @@ class Image:
         :py:meth:`applyUnsharpMask`
 
         """
-        if( isinstance(xCutoff,float) ):
-            xCutoff = [xCutoff,xCutoff,xCutoff]
-        if( isinstance(yCutoff,float) ):
-            yCutoff = [yCutoff,yCutoff,yCutoff]
+        if isinstance(xCutoff, float):
+            xCutoff = [xCutoff, xCutoff, xCutoff]
+        if isinstance(yCutoff, float):
+            yCutoff = [yCutoff, yCutoff, yCutoff]
         if(yCutoff is None):
-            yCutoff = [xCutoff[0],xCutoff[1],xCutoff[2]]
+            yCutoff = [xCutoff[0], xCutoff[1], xCutoff[2]]
 
-        for i in range(0,len(xCutoff)):
-            xCutoff[i] = self._boundsFromPercentage(xCutoff[i],self.width)
-            yCutoff[i] = self._boundsFromPercentage(yCutoff[i],self.height)
+        for i in range(0, len(xCutoff)):
+            xCutoff[i] = self._boundsFromPercentage(xCutoff[i], self.width)
+            yCutoff[i] = self._boundsFromPercentage(yCutoff[i], self.height)
 
         filter = None
         h  = self.height
         w  = self.width
 
-        if( grayscale ):
-            filter = cv.CreateImage((self.width,self.height),cv.IPL_DEPTH_8U,1)
+        if grayscale:
+            filter = cv.CreateImage((self.width, self.height), cv.IPL_DEPTH_8U, 1)
             cv.Zero(filter)
             #now make all of the corners black
 
-            cv.Rectangle(filter,(0,0),(xCutoff[0],yCutoff[0]),255,thickness=-1) #TL
-            cv.Rectangle(filter,(0,h-yCutoff[0]),(xCutoff[0],h),255,thickness=-1) #BL
-            cv.Rectangle(filter,(w-xCutoff[0],0),(w,yCutoff[0]),255,thickness=-1) #TR
-            cv.Rectangle(filter,(w-xCutoff[0],h-yCutoff[0]),(w,h),255,thickness=-1) #BR
+            cv.Rectangle(filter, (0, 0), (xCutoff[0], yCutoff[0]), 255, thickness=-1) #TL
+            cv.Rectangle(filter, (0, h-yCutoff[0]), (xCutoff[0], h), 255, thickness=-1) #BL
+            cv.Rectangle(filter, (w-xCutoff[0], 0), (w, yCutoff[0]), 255, thickness=-1) #TR
+            cv.Rectangle(filter, (w-xCutoff[0], h-yCutoff[0]), (w, h), 255, thickness=-1) #BR
 
         else:
             #I need to looking into CVMERGE/SPLIT... I would really need to know
             # how much memory we're allocating here
-            filterB = cv.CreateImage((self.width,self.height),cv.IPL_DEPTH_8U,1)
-            filterG = cv.CreateImage((self.width,self.height),cv.IPL_DEPTH_8U,1)
-            filterR = cv.CreateImage((self.width,self.height),cv.IPL_DEPTH_8U,1)
+            filterB = cv.CreateImage((self.width, self.height), cv.IPL_DEPTH_8U, 1)
+            filterG = cv.CreateImage((self.width, self.height), cv.IPL_DEPTH_8U, 1)
+            filterR = cv.CreateImage((self.width, self.height), cv.IPL_DEPTH_8U, 1)
             cv.Zero(filterB)
             cv.Zero(filterG)
             cv.Zero(filterR)
             #now make all of the corners black
-            temp = [filterB,filterG,filterR]
+            temp = [filterB, filterG, filterR]
             i = 0
             for f in temp:
-                cv.Rectangle(f,(0,0),(xCutoff[i],yCutoff[i]),255,thickness=-1)
-                cv.Rectangle(f,(0,h-yCutoff[i]),(xCutoff[i],h),255,thickness=-1)
-                cv.Rectangle(f,(w-xCutoff[i],0),(w,yCutoff[i]),255,thickness=-1)
-                cv.Rectangle(f,(w-xCutoff[i],h-yCutoff[i]),(w,h),255,thickness=-1)
+                cv.Rectangle(f, (0, 0), (xCutoff[i], yCutoff[i]), 255, thickness=-1)
+                cv.Rectangle(f, (0, h-yCutoff[i]), (xCutoff[i], h), 255, thickness=-1)
+                cv.Rectangle(f, (w-xCutoff[i], 0), (w, yCutoff[i]), 255, thickness=-1)
+                cv.Rectangle(f, (w-xCutoff[i], h-yCutoff[i]), (w, h), 255, thickness=-1)
                 i = i+1
 
-            filter = cv.CreateImage((self.width,self.height),cv.IPL_DEPTH_8U,3)
-            cv.Merge(filterB,filterG,filterR,None,filter)
+            filter = cv.CreateImage((self.width, self.height), cv.IPL_DEPTH_8U, 3)
+            cv.Merge(filterB, filterG, filterR, None, filter)
 
         scvFilt = Image(filter)
-        retVal = self.applyDFTFilter(scvFilt,grayscale)
+        retVal = self.applyDFTFilter(scvFilt, grayscale)
         return retVal
 
 
     #FUCK! need to decide BGR or RGB
-    # ((rx_begin,ry_begin)(gx_begin,gy_begin)(bx_begin,by_begin))
-    # or (x,y)
-    def bandPassFilter(self, xCutoffLow, xCutoffHigh, yCutoffLow=None, yCutoffHigh=None,grayscale=False):
+    # ((rx_begin, ry_begin)(gx_begin, gy_begin)(bx_begin, by_begin))
+    # or (x, y)
+    def bandPassFilter(self, xCutoffLow, xCutoffHigh, yCutoffLow=None, yCutoffHigh=None, grayscale=False):
         """
         **SUMMARY**
 
@@ -10445,8 +10417,8 @@ class Image:
 
         * *xCutoffLow*  - The horizontal frequency at which we perform the cutoff of the low
           frequency signals. A separate
-          frequency can be used for the b,g, and r signals by providing a
-          list of values. The frequency is defined between zero to one,
+          frequency can be used for the b, g, and r signals by providing a
+          list of values. The frequency is defined between zero to one, 
           where zero is constant component and 1 is the highest possible
           frequency in the image.
 
@@ -10454,7 +10426,7 @@ class Image:
           frequency signals. Our filter passes signals between xCutoffLow and
           xCutoffHigh. A separate frequency can be used for the b, g, and r
           channels by providing a
-          list of values. The frequency is defined between zero to one,
+          list of values. The frequency is defined between zero to one, 
           where zero is constant component and 1 is the highest possible
           frequency in the image.
 
@@ -10477,7 +10449,7 @@ class Image:
 
         >>> img = Image("SimpleCV/sampleimages/RedDog2.jpg")
         >>> img.getDFTLogMagnitude().show()
-        >>> lpf = img.bandPassFilter([0.2,0.2,0.05],[0.3,0.3,0.2])
+        >>> lpf = img.bandPassFilter([0.2, 0.2, 0.05], [0.3, 0.3, 0.2])
         >>> lpf.show()
         >>> lpf.getDFTLogMagnitude().show()
 
@@ -10503,78 +10475,78 @@ class Image:
 
         """
 
-        if( isinstance(xCutoffLow,float) ):
-            xCutoffLow = [xCutoffLow,xCutoffLow,xCutoffLow]
-        if( isinstance(yCutoffLow,float) ):
-            yCutoffLow = [yCutoffLow,yCutoffLow,yCutoffLow]
-        if( isinstance(xCutoffHigh,float) ):
-            xCutoffHigh = [xCutoffHigh,xCutoffHigh,xCutoffHigh]
-        if( isinstance(yCutoffHigh,float) ):
-            yCutoffHigh = [yCutoffHigh,yCutoffHigh,yCutoffHigh]
+        if isinstance(xCutoffLow, float):
+            xCutoffLow = [xCutoffLow, xCutoffLow, xCutoffLow]
+        if isinstance(yCutoffLow, float):
+            yCutoffLow = [yCutoffLow, yCutoffLow, yCutoffLow]
+        if isinstance(xCutoffHigh, float):
+            xCutoffHigh = [xCutoffHigh, xCutoffHigh, xCutoffHigh]
+        if isinstance(yCutoffHigh, float):
+            yCutoffHigh = [yCutoffHigh, yCutoffHigh, yCutoffHigh]
 
         if(yCutoffLow is None):
-            yCutoffLow = [xCutoffLow[0],xCutoffLow[1],xCutoffLow[2]]
+            yCutoffLow = [xCutoffLow[0], xCutoffLow[1], xCutoffLow[2]]
         if(yCutoffHigh is None):
-            yCutoffHigh = [xCutoffHigh[0],xCutoffHigh[1],xCutoffHigh[2]]
+            yCutoffHigh = [xCutoffHigh[0], xCutoffHigh[1], xCutoffHigh[2]]
 
-        for i in range(0,len(xCutoffLow)):
-            xCutoffLow[i] = self._boundsFromPercentage(xCutoffLow[i],self.width)
-            xCutoffHigh[i] = self._boundsFromPercentage(xCutoffHigh[i],self.width)
-            yCutoffHigh[i] = self._boundsFromPercentage(yCutoffHigh[i],self.height)
-            yCutoffLow[i] = self._boundsFromPercentage(yCutoffLow[i],self.height)
+        for i in range(0, len(xCutoffLow)):
+            xCutoffLow[i] = self._boundsFromPercentage(xCutoffLow[i], self.width)
+            xCutoffHigh[i] = self._boundsFromPercentage(xCutoffHigh[i], self.width)
+            yCutoffHigh[i] = self._boundsFromPercentage(yCutoffHigh[i], self.height)
+            yCutoffLow[i] = self._boundsFromPercentage(yCutoffLow[i], self.height)
 
         filter = None
         h  = self.height
         w  = self.width
-        if( grayscale ):
-            filter = cv.CreateImage((self.width,self.height),cv.IPL_DEPTH_8U,1)
+        if grayscale:
+            filter = cv.CreateImage((self.width, self.height), cv.IPL_DEPTH_8U, 1)
             cv.Zero(filter)
             #now make all of the corners black
-            cv.Rectangle(filter,(0,0),(xCutoffHigh[0],yCutoffHigh[0]),255,thickness=-1) #TL
-            cv.Rectangle(filter,(0,h-yCutoffHigh[0]),(xCutoffHigh[0],h),255,thickness=-1) #BL
-            cv.Rectangle(filter,(w-xCutoffHigh[0],0),(w,yCutoffHigh[0]),255,thickness=-1) #TR
-            cv.Rectangle(filter,(w-xCutoffHigh[0],h-yCutoffHigh[0]),(w,h),255,thickness=-1) #BR
-            cv.Rectangle(filter,(0,0),(xCutoffLow[0],yCutoffLow[0]),0,thickness=-1) #TL
-            cv.Rectangle(filter,(0,h-yCutoffLow[0]),(xCutoffLow[0],h),0,thickness=-1) #BL
-            cv.Rectangle(filter,(w-xCutoffLow[0],0),(w,yCutoffLow[0]),0,thickness=-1) #TR
-            cv.Rectangle(filter,(w-xCutoffLow[0],h-yCutoffLow[0]),(w,h),0,thickness=-1) #BR
+            cv.Rectangle(filter, (0, 0), (xCutoffHigh[0], yCutoffHigh[0]), 255, thickness=-1) #TL
+            cv.Rectangle(filter, (0, h-yCutoffHigh[0]), (xCutoffHigh[0], h), 255, thickness=-1) #BL
+            cv.Rectangle(filter, (w-xCutoffHigh[0], 0), (w, yCutoffHigh[0]), 255, thickness=-1) #TR
+            cv.Rectangle(filter, (w-xCutoffHigh[0], h-yCutoffHigh[0]), (w, h), 255, thickness=-1) #BR
+            cv.Rectangle(filter, (0, 0), (xCutoffLow[0], yCutoffLow[0]), 0, thickness=-1) #TL
+            cv.Rectangle(filter, (0, h-yCutoffLow[0]), (xCutoffLow[0], h), 0, thickness=-1) #BL
+            cv.Rectangle(filter, (w-xCutoffLow[0], 0), (w, yCutoffLow[0]), 0, thickness=-1) #TR
+            cv.Rectangle(filter, (w-xCutoffLow[0], h-yCutoffLow[0]), (w, h), 0, thickness=-1) #BR
 
 
         else:
             #I need to looking into CVMERGE/SPLIT... I would really need to know
             # how much memory we're allocating here
-            filterB = cv.CreateImage((self.width,self.height),cv.IPL_DEPTH_8U,1)
-            filterG = cv.CreateImage((self.width,self.height),cv.IPL_DEPTH_8U,1)
-            filterR = cv.CreateImage((self.width,self.height),cv.IPL_DEPTH_8U,1)
+            filterB = cv.CreateImage((self.width, self.height), cv.IPL_DEPTH_8U, 1)
+            filterG = cv.CreateImage((self.width, self.height), cv.IPL_DEPTH_8U, 1)
+            filterR = cv.CreateImage((self.width, self.height), cv.IPL_DEPTH_8U, 1)
             cv.Zero(filterB)
             cv.Zero(filterG)
             cv.Zero(filterR)
             #now make all of the corners black
-            temp = [filterB,filterG,filterR]
+            temp = [filterB, filterG, filterR]
             i = 0
             for f in temp:
-                cv.Rectangle(f,(0,0),(xCutoffHigh[i],yCutoffHigh[i]),255,thickness=-1) #TL
-                cv.Rectangle(f,(0,h-yCutoffHigh[i]),(xCutoffHigh[i],h),255,thickness=-1) #BL
-                cv.Rectangle(f,(w-xCutoffHigh[i],0),(w,yCutoffHigh[i]),255,thickness=-1) #TR
-                cv.Rectangle(f,(w-xCutoffHigh[i],h-yCutoffHigh[i]),(w,h),255,thickness=-1) #BR
-                cv.Rectangle(f,(0,0),(xCutoffLow[i],yCutoffLow[i]),0,thickness=-1) #TL
-                cv.Rectangle(f,(0,h-yCutoffLow[i]),(xCutoffLow[i],h),0,thickness=-1) #BL
-                cv.Rectangle(f,(w-xCutoffLow[i],0),(w,yCutoffLow[i]),0,thickness=-1) #TR
-                cv.Rectangle(f,(w-xCutoffLow[i],h-yCutoffLow[i]),(w,h),0,thickness=-1) #BR
+                cv.Rectangle(f, (0, 0), (xCutoffHigh[i], yCutoffHigh[i]), 255, thickness=-1) #TL
+                cv.Rectangle(f, (0, h-yCutoffHigh[i]), (xCutoffHigh[i], h), 255, thickness=-1) #BL
+                cv.Rectangle(f, (w-xCutoffHigh[i], 0), (w, yCutoffHigh[i]), 255, thickness=-1) #TR
+                cv.Rectangle(f, (w-xCutoffHigh[i], h-yCutoffHigh[i]), (w, h), 255, thickness=-1) #BR
+                cv.Rectangle(f, (0, 0), (xCutoffLow[i], yCutoffLow[i]), 0, thickness=-1) #TL
+                cv.Rectangle(f, (0, h-yCutoffLow[i]), (xCutoffLow[i], h), 0, thickness=-1) #BL
+                cv.Rectangle(f, (w-xCutoffLow[i], 0), (w, yCutoffLow[i]), 0, thickness=-1) #TR
+                cv.Rectangle(f, (w-xCutoffLow[i], h-yCutoffLow[i]), (w, h), 0, thickness=-1) #BR
                 i = i+1
 
-            filter = cv.CreateImage((self.width,self.height),cv.IPL_DEPTH_8U,3)
-            cv.Merge(filterB,filterG,filterR,None,filter)
+            filter = cv.CreateImage((self.width, self.height), cv.IPL_DEPTH_8U, 3)
+            cv.Merge(filterB, filterG, filterR, None, filter)
 
         scvFilt = Image(filter)
-        retVal = self.applyDFTFilter(scvFilt,grayscale)
+        retVal = self.applyDFTFilter(scvFilt, grayscale)
         return retVal
 
 
 
 
 
-    def _inverseDFT(self,input):
+    def _inverseDFT(self, input):
         """
         **SUMMARY**
         **PARAMETERS**
@@ -10586,39 +10558,39 @@ class Image:
         # a destructive IDFT operation for internal calls
         w = input[0].width
         h = input[0].height
-        if( len(input) == 1 ):
+        if len(input) == 1:
             cv.DFT(input[0], input[0], cv.CV_DXT_INV_SCALE)
-            result = cv.CreateImage((w,h), cv.IPL_DEPTH_8U, 1)
-            data = cv.CreateImage((w,h), cv.IPL_DEPTH_64F, 1)
-            blank = cv.CreateImage((w,h), cv.IPL_DEPTH_64F, 1)
-            cv.Split(input[0],data,blank,None,None)
+            result = cv.CreateImage((w, h), cv.IPL_DEPTH_8U, 1)
+            data = cv.CreateImage((w, h), cv.IPL_DEPTH_64F, 1)
+            blank = cv.CreateImage((w, h), cv.IPL_DEPTH_64F, 1)
+            cv.Split(input[0], data, blank, None, None)
             min, max, pt1, pt2 = cv.MinMaxLoc(data)
             denom = max-min
             if(denom == 0):
                 denom = 1
             cv.Scale(data, data, 1.0/(denom), 1.0*(-min)/(denom))
-            cv.Mul(data,data,data,255.0)
-            cv.Convert(data,result)
+            cv.Mul(data, data, data, 255.0)
+            cv.Convert(data, result)
             retVal = Image(result)
         else: # DO RGB separately
             results = []
-            data = cv.CreateImage((w,h), cv.IPL_DEPTH_64F, 1)
-            blank = cv.CreateImage((w,h), cv.IPL_DEPTH_64F, 1)
-            for i in range(0,len(input)):
+            data = cv.CreateImage((w, h), cv.IPL_DEPTH_64F, 1)
+            blank = cv.CreateImage((w, h), cv.IPL_DEPTH_64F, 1)
+            for i in range(0, len(input)):
                 cv.DFT(input[i], input[i], cv.CV_DXT_INV_SCALE)
-                result = cv.CreateImage((w,h), cv.IPL_DEPTH_8U, 1)
-                cv.Split( input[i],data,blank,None,None)
+                result = cv.CreateImage((w, h), cv.IPL_DEPTH_8U, 1)
+                cv.Split( input[i], data, blank, None, None)
                 min, max, pt1, pt2 = cv.MinMaxLoc(data)
                 denom = max-min
                 if(denom == 0):
                     denom = 1
                 cv.Scale(data, data, 1.0/(denom), 1.0*(-min)/(denom))
-                cv.Mul(data,data,data,255.0) # this may not be right
-                cv.Convert(data,result)
+                cv.Mul(data, data, data, 255.0) # this may not be right
+                cv.Convert(data, result)
                 results.append(result)
 
-            retVal = cv.CreateImage((w,h),cv.IPL_DEPTH_8U,3)
-            cv.Merge(results[0],results[1],results[2],None,retVal)
+            retVal = cv.CreateImage((w, h), cv.IPL_DEPTH_8U, 3)
+            cv.Merge(results[0], results[1], results[2], None, retVal)
             retVal = Image(retVal)
         del input
         return retVal
@@ -10669,53 +10641,53 @@ class Image:
         w = raw_dft_image[0].width
         h = raw_dft_image[0].height
         if(len(raw_dft_image) == 1):
-            gs = cv.CreateImage((w,h),cv.IPL_DEPTH_64F,2)
-            cv.Copy(self._DFT[0],gs)
+            gs = cv.CreateImage((w, h), cv.IPL_DEPTH_64F, 2)
+            cv.Copy(self._DFT[0], gs)
             input.append(gs)
         else:
             for img in raw_dft_image:
-                temp = cv.CreateImage((w,h),cv.IPL_DEPTH_64F,2)
-                cv.Copy(img,temp)
+                temp = cv.CreateImage((w, h), cv.IPL_DEPTH_64F, 2)
+                cv.Copy(img, temp)
                 input.append(img)
 
-        if( len(input) == 1 ):
+        if len(input) == 1:
             cv.DFT(input[0], input[0], cv.CV_DXT_INV_SCALE)
-            result = cv.CreateImage((w,h), cv.IPL_DEPTH_8U, 1)
-            data = cv.CreateImage((w,h), cv.IPL_DEPTH_64F, 1)
-            blank = cv.CreateImage((w,h), cv.IPL_DEPTH_64F, 1)
-            cv.Split(input[0],data,blank,None,None)
+            result = cv.CreateImage((w, h), cv.IPL_DEPTH_8U, 1)
+            data = cv.CreateImage((w, h), cv.IPL_DEPTH_64F, 1)
+            blank = cv.CreateImage((w, h), cv.IPL_DEPTH_64F, 1)
+            cv.Split(input[0], data, blank, None, None)
             min, max, pt1, pt2 = cv.MinMaxLoc(data)
             denom = max-min
             if(denom == 0):
                 denom = 1
             cv.Scale(data, data, 1.0/(denom), 1.0*(-min)/(denom))
-            cv.Mul(data,data,data,255.0)
-            cv.Convert(data,result)
+            cv.Mul(data, data, data, 255.0)
+            cv.Convert(data, result)
             retVal = Image(result)
         else: # DO RGB separately
             results = []
-            data = cv.CreateImage((w,h), cv.IPL_DEPTH_64F, 1)
-            blank = cv.CreateImage((w,h), cv.IPL_DEPTH_64F, 1)
-            for i in range(0,len(raw_dft_image)):
+            data = cv.CreateImage((w, h), cv.IPL_DEPTH_64F, 1)
+            blank = cv.CreateImage((w, h), cv.IPL_DEPTH_64F, 1)
+            for i in range(0, len(raw_dft_image)):
                 cv.DFT(input[i], input[i], cv.CV_DXT_INV_SCALE)
-                result = cv.CreateImage((w,h), cv.IPL_DEPTH_8U, 1)
-                cv.Split( input[i],data,blank,None,None)
+                result = cv.CreateImage((w, h), cv.IPL_DEPTH_8U, 1)
+                cv.Split( input[i], data, blank, None, None)
                 min, max, pt1, pt2 = cv.MinMaxLoc(data)
                 denom = max-min
                 if(denom == 0):
                     denom = 1
                 cv.Scale(data, data, 1.0/(denom), 1.0*(-min)/(denom))
-                cv.Mul(data,data,data,255.0) # this may not be right
-                cv.Convert(data,result)
+                cv.Mul(data, data, data, 255.0) # this may not be right
+                cv.Convert(data, result)
                 results.append(result)
 
-            retVal = cv.CreateImage((w,h),cv.IPL_DEPTH_8U,3)
-            cv.Merge(results[0],results[1],results[2],None,retVal)
+            retVal = cv.CreateImage((w, h), cv.IPL_DEPTH_8U, 3)
+            cv.Merge(results[0], results[1], results[2], None, retVal)
             retVal = Image(retVal)
 
         return retVal
 
-    def applyButterworthFilter(self,dia=400,order=2,highpass=False,grayscale=False):
+    def applyButterworthFilter(self, dia=400, order=2, highpass=False, grayscale=False):
         """
         **SUMMARY**
 
@@ -10733,20 +10705,20 @@ class Image:
         **EXAMPLE**
 
         >>> im = Image("lenna")
-        >>> img = im.applyButterworth(dia=400,order=2,highpass=True,grayscale=False)
+        >>> img = im.applyButterworth(dia=400, order=2, highpass=True, grayscale=False)
 
         Output image: http://i.imgur.com/5LS3e.png
 
-        >>> img = im.applyButterworth(dia=400,order=2,highpass=False,grayscale=False)
+        >>> img = im.applyButterworth(dia=400, order=2, highpass=False, grayscale=False)
 
         Output img: http://i.imgur.com/QlCAY.png
 
         >>> im = Image("grayscale_lenn.png") #take image from here: http://i.imgur.com/O0gZn.png
-        >>> img = im.applyButterworth(dia=400,order=2,highpass=True,grayscale=True)
+        >>> img = im.applyButterworth(dia=400, order=2, highpass=True, grayscale=True)
 
         Output img: http://i.imgur.com/BYYnp.png
 
-        >>> img = im.applyButterworth(dia=400,order=2,highpass=False,grayscale=True)
+        >>> img = im.applyButterworth(dia=400, order=2, highpass=False, grayscale=True)
 
         Output img: http://i.imgur.com/BYYnp.png
 
@@ -10766,7 +10738,7 @@ class Image:
 
         """
         #reimplemented with faster, vectorized filter kernel creation
-        w,h = self.size()
+        w, h = self.size()
         intensity_scale = 2**8 - 1 #for now 8-bit
         sz_x            = 64       #for now constant, symmetric
         sz_y            = 64       #for now constant, symmetric
@@ -10779,8 +10751,8 @@ class Image:
         if highpass:     #then invert the filter
             flt = intensity_scale - flt
         flt    = Image(flt) #numpy arrays are in row-major form...doesn't matter for symmetric filter 
-        flt_re = flt.resize(w,h)
-        img = self.applyDFTFilter(flt_re,grayscale)
+        flt_re = flt.resize(w, h)
+        img = self.applyDFTFilter(flt_re, grayscale)
         return img
 
     def applyGaussianFilter(self, dia=400, highpass=False, grayscale=False):
@@ -10800,20 +10772,20 @@ class Image:
         **EXAMPLE**
 
         >>> im = Image("lenna")
-        >>> img = im.applyGaussianfilter(dia=400,highpass=True,grayscale=False)
+        >>> img = im.applyGaussianfilter(dia=400, highpass=True, grayscale=False)
 
         Output image: http://i.imgur.com/DttJv.png
 
-        >>> img = im.applyGaussianfilter(dia=400,highpass=False,grayscale=False)
+        >>> img = im.applyGaussianfilter(dia=400, highpass=False, grayscale=False)
 
         Output img: http://i.imgur.com/PWn4o.png
 
         >>> im = Image("grayscale_lenn.png") #take image from here: http://i.imgur.com/O0gZn.png
-        >>> img = im.applyGaussianfilter(dia=400,highpass=True,grayscale=True)
+        >>> img = im.applyGaussianfilter(dia=400, highpass=True, grayscale=True)
 
         Output img: http://i.imgur.com/9hX5J.png
 
-        >>> img = im.applyGaussianfilter(dia=400,highpass=False,grayscale=True)
+        >>> img = im.applyGaussianfilter(dia=400, highpass=False, grayscale=True)
 
         Output img: http://i.imgur.com/MXI5T.png
 
@@ -10833,7 +10805,7 @@ class Image:
 
         """
         #reimplemented with faster, vectorized filter kernel creation
-        w,h = self.size()
+        w, h = self.size()
         intensity_scale = 2**8 - 1 #for now 8-bit
         sz_x            = 64       #for now constant, symmetric
         sz_y            = 64       #for now constant, symmetric
@@ -10846,11 +10818,11 @@ class Image:
         if highpass:     #then invert the filter
             flt = intensity_scale - flt
         flt    = Image(flt) #numpy arrays are in row-major form...doesn't matter for symmetric filter 
-        flt_re = flt.resize(w,h)
-        img = self.applyDFTFilter(flt_re,grayscale)
+        flt_re = flt.resize(w, h)
+        img = self.applyDFTFilter(flt_re, grayscale)
         return img
 
-    def applyUnsharpMask(self,boost=1,dia=400,grayscale=False):
+    def applyUnsharpMask(self, boost=1, dia=400, grayscale=False):
         """
         **SUMMARY**
 
@@ -10873,20 +10845,20 @@ class Image:
         Gaussian Filters:
 
         >>> im = Image("lenna")
-        >>> img = im.applyUnsharpMask(2,grayscale=False) #highboost filtering
+        >>> img = im.applyUnsharpMask(2, grayscale=False) #highboost filtering
 
         output image: http://i.imgur.com/A1pZf.png
 
-        >>> img = im.applyUnsharpMask(1,grayscale=False) #unsharp masking
+        >>> img = im.applyUnsharpMask(1, grayscale=False) #unsharp masking
 
         output image: http://i.imgur.com/smCdL.png
 
         >>> im = Image("grayscale_lenn.png") #take image from here: http://i.imgur.com/O0gZn.png
-        >>> img = im.applyUnsharpMask(2,grayscale=True) #highboost filtering
+        >>> img = im.applyUnsharpMask(2, grayscale=True) #highboost filtering
 
         output image: http://i.imgur.com/VtGzl.png
 
-        >>> img = im.applyUnsharpMask(1,grayscale=True) #unsharp masking
+        >>> img = im.applyUnsharpMask(1, grayscale=True) #unsharp masking
 
         output image: http://i.imgur.com/bywny.png
 
@@ -10909,7 +10881,7 @@ class Image:
             print "boost >= 1"
             return None
 
-        lpIm = self.applyGaussianFilter(dia=dia,grayscale=grayscale,highpass=False)
+        lpIm = self.applyGaussianFilter(dia=dia, grayscale=grayscale, highpass=False)
         im = Image(self.getBitmap())
         mask = im - lpIm
         img = im
@@ -10925,37 +10897,37 @@ class Image:
         >>> img.listHaarFeatures()
 
         Then use one of the file names returned as the input to the findHaarFeature()
-        function.  So you should get a list, more than likely you will see face.xml,
+        function.  So you should get a list, more than likely you will see face.xml, 
         to use it then just
 
         >>> img.findHaarFeatures('face.xml')
         '''
 
-        features_directory = os.path.join(LAUNCH_PATH, 'Features','HaarCascades')
+        features_directory = os.path.join(LAUNCH_PATH, 'Features', 'HaarCascades')
         features = os.listdir(features_directory)
         print features
 
-    def _CopyAvg(self, src, dst,roi, levels, levels_f, mode):
+    def _CopyAvg(self, src, dst, roi, levels, levels_f, mode):
         '''
         Take the value in an ROI, calculate the average / peak hue
         and then set the output image roi to the value.
         '''
 
-        if( mode ): # get the peak hue for an area
-            h = src[roi[0]:roi[0]+roi[2],roi[1]:roi[1]+roi[3]].hueHistogram()
+        if mode: # get the peak hue for an area
+            h = src[roi[0]:roi[0]+roi[2], roi[1]:roi[1]+roi[3]].hueHistogram()
             myHue = np.argmax(h)
-            C = (float(myHue),float(255),float(255),float(0))
-            cv.SetImageROI(dst,roi)
-            cv.AddS(dst,c,dst)
+            C = (float(myHue), float(255), float(255), float(0))
+            cv.SetImageROI(dst, roi)
+            cv.AddS(dst, c, dst)
             cv.ResetImageROI(dst)
         else: # get the average value for an area optionally set levels
-            cv.SetImageROI(src.getBitmap(),roi)
-            cv.SetImageROI(dst,roi)
+            cv.SetImageROI(src.getBitmap(), roi)
+            cv.SetImageROI(dst, roi)
             avg = cv.Avg(src.getBitmap())
-            avg = (float(avg[0]),float(avg[1]),float(avg[2]),0)
+            avg = (float(avg[0]), float(avg[1]), float(avg[2]), 0)
             if(levels is not None):
-                avg = (int(avg[0]/levels)*levels_f,int(avg[1]/levels)*levels_f,int(avg[2]/levels)*levels_f,0)
-            cv.AddS(dst,avg,dst)
+                avg = (int(avg[0]/levels)*levels_f, int(avg[1]/levels)*levels_f, int(avg[2]/levels)*levels_f, 0)
+            cv.AddS(dst, avg, dst)
             cv.ResetImageROI(src.getBitmap())
             cv.ResetImageROI(dst)
 
@@ -10968,7 +10940,7 @@ class Image:
         **PARAMETERS**
 
         * *block_size* - the blur block size in pixels, an integer is an square blur, a tuple is rectangular.
-        * *region* - do the blur in a region in format (x_position,y_position,width,height)
+        * *region* - do the blur in a region in format (x_position, y_position, width, height)
         * *levels* - the number of levels per color channel. This makes the image look like an 8-bit video game.
         * *doHue* - If this value is true we calculate the peak hue for the area, not the
           average color for the area.
@@ -10980,28 +10952,28 @@ class Image:
         **EXAMPLE**
 
         >>> img = Image("lenna")
-        >>> result = img.pixelize( 16, (200,180,250,250), levels=4)
+        >>> result = img.pixelize( 16, (200, 180, 250, 250), levels=4)
         >>> img.show()
 
         """
 
-        if( isinstance(block_size, int) ):
-            block_size = (block_size,block_size)
+        if isinstance(block_size, int):
+            block_size = (block_size, block_size)
 
 
         retVal = self.getEmpty()
 
 
         levels_f = 0.00
-        if( levels is not None ):
+        if levels is not None:
             levels = 255/int(levels)
             if(levels <= 1 ):
                 levels = 2
             levels_f = float(levels)
 
-        if( region is not None ):
+        if region is not None:
             cv.Copy(self.getBitmap(), retVal)
-            cv.SetImageROI(retVal,region)
+            cv.SetImageROI(retVal, region)
             cv.Zero(retVal)
             cv.ResetImageROI(retVal)
             xs = region[0]
@@ -11014,7 +10986,7 @@ class Image:
             w = self.width
             h = self.height
 
-        #if( region is None ):
+        #if region is None:
         hc = w / block_size[0] #number of horizontal blocks
         vc = h / block_size[1] #number of vertical blocks
         #when we fit in the blocks, we're going to spread the round off
@@ -11028,70 +11000,70 @@ class Image:
         x_f = (x_0+(block_size[0]*hc)) #this would be the end point
         y_f = (y_0+(block_size[1]*vc))
 
-        for i in range(0,hc):
-            for j in range(0,vc):
+        for i in range(0, hc):
+            for j in range(0, vc):
                 xt = x_0+(block_size[0]*i)
                 yt = y_0+(block_size[1]*j)
-                roi = (xt,yt,block_size[0],block_size[1])
-                self._CopyAvg(self,retVal,roi,levels,levels_f,doHue)
+                roi = (xt, yt, block_size[0], block_size[1])
+                self._CopyAvg(self, retVal, roi, levels, levels_f, doHue)
 
 
-        if( x_lhs > 0 ): # add a left strip
+        if x_lhs > 0: # add a left strip
             xt = xs
             wt = x_lhs
             ht = block_size[1]
-            for j in range(0,vc):
+            for j in range(0, vc):
                 yt = y_0+(j*block_size[1])
-                roi = (xt,yt,wt,ht)
-                self._CopyAvg(self,retVal,roi,levels,levels_f,doHue)
+                roi = (xt, yt, wt, ht)
+                self._CopyAvg(self, retVal, roi, levels, levels_f, doHue)
 
 
-        if( x_rhs > 0 ): # add a right strip
+        if x_rhs > 0: # add a right strip
             xt = (x_0+(block_size[0]*hc))
             wt = x_rhs
             ht = block_size[1]
-            for j in range(0,vc):
+            for j in range(0, vc):
                 yt = y_0+(j*block_size[1])
-                roi = (xt,yt,wt,ht)
-                self._CopyAvg(self,retVal,roi,levels,levels_f,doHue)
+                roi = (xt, yt, wt, ht)
+                self._CopyAvg(self, retVal, roi, levels, levels_f, doHue)
 
-        if( y_lhs > 0 ): # add a left strip
+        if y_lhs > 0: # add a left strip
             yt = ys
             ht = y_lhs
             wt = block_size[0]
-            for i in range(0,hc):
+            for i in range(0, hc):
                 xt = x_0+(i*block_size[0])
-                roi = (xt,yt,wt,ht)
-                self._CopyAvg(self,retVal,roi,levels,levels_f,doHue)
+                roi = (xt, yt, wt, ht)
+                self._CopyAvg(self, retVal, roi, levels, levels_f, doHue)
 
-        if( y_rhs > 0 ): # add a right strip
+        if y_rhs > 0: # add a right strip
             yt = (y_0+(block_size[1]*vc))
             ht = y_rhs
             wt = block_size[0]
-            for i in range(0,hc):
+            for i in range(0, hc):
                 xt = x_0+(i*block_size[0])
-                roi = (xt,yt,wt,ht)
-                self._CopyAvg(self,retVal,roi,levels,levels_f,doHue)
+                roi = (xt, yt, wt, ht)
+                self._CopyAvg(self, retVal, roi, levels, levels_f, doHue)
 
         #now the corner cases
         if(x_lhs > 0 and y_lhs > 0 ):
-            roi = (xs,ys,x_lhs,y_lhs)
-            self._CopyAvg(self,retVal,roi,levels,levels_f,doHue)
+            roi = (xs, ys, x_lhs, y_lhs)
+            self._CopyAvg(self, retVal, roi, levels, levels_f, doHue)
 
         if(x_rhs > 0 and y_rhs > 0 ):
-            roi = (x_f,y_f,x_rhs,y_rhs)
-            self._CopyAvg(self,retVal,roi,levels,levels_f,doHue)
+            roi = (x_f, y_f, x_rhs, y_rhs)
+            self._CopyAvg(self, retVal, roi, levels, levels_f, doHue)
 
         if(x_lhs > 0 and y_rhs > 0 ):
-            roi = (xs,y_f,x_lhs,y_rhs)
-            self._CopyAvg(self,retVal,roi,levels,levels_f,doHue)
+            roi = (xs, y_f, x_lhs, y_rhs)
+            self._CopyAvg(self, retVal, roi, levels, levels_f, doHue)
 
         if(x_rhs > 0 and y_lhs > 0 ):
-            roi = (x_f,ys,x_rhs,y_lhs)
-            self._CopyAvg(self,retVal,roi,levels,levels_f,doHue)
+            roi = (x_f, ys, x_rhs, y_lhs)
+            self._CopyAvg(self, retVal, roi, levels, levels_f, doHue)
 
         if(doHue):
-            cv.CvtColor(retVal,retVal,cv.CV_HSV2BGR)
+            cv.CvtColor(retVal, retVal, cv.CV_HSV2BGR)
 
 
         return Image(retVal)
@@ -11107,7 +11079,7 @@ class Image:
         * *features* - A list with the Haar like feature cascades that should be matched.
         * *block_size* - The size of the blocks for the pixelize function.
         * *transform* - A function, to be applied to the regions matched instead of pixelize.
-        * This function must take two arguments: the image and the region it'll be applied to,
+        * This function must take two arguments: the image and the region it'll be applied to, 
         * as in region = (x, y, width, height).
 
         **RETURNS**
@@ -11146,7 +11118,7 @@ class Image:
         if found:
             for feature_set in found:
                 for region in feature_set:
-                    rect = (region.topLeftCorner()[0], region.topLeftCorner()[1],
+                    rect = (region.topLeftCorner()[0], region.topLeftCorner()[1], 
                             region.width(), region.height())
                     if transform is None:
                         img = img.pixelize(block_size=block_size, region=rect)
@@ -11174,15 +11146,15 @@ class Image:
         #todo Add noise and showcase the image 
 
         """
-        # kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(5,5))
-        # res = cv2.morphologyEx(self.getGrayNumpy(),cv2.MORPH_OPEN,kernel)
+        # kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+        # res = cv2.morphologyEx(self.getGrayNumpy(), cv2.MORPH_OPEN, kernel)
         # return res
         des = cv2.bitwise_not(self.getGrayNumpy())
         return cv2.inPaint(des)
-        contour,hier = cv2.findContours(des,cv2.RETR_CCOMP,cv2.CHAIN_APPROX_SIMPLE)
+        contour, hier = cv2.findContours(des, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
 
         for cnt in contour:
-            cv2.drawContours(des,[cnt],0,255,-1)
+            cv2.drawContours(des, [cnt], 0, 255, -1)
             print 'yep'
 
         gray = cv2.bitwise_not(des)
@@ -11198,8 +11170,8 @@ class Image:
 
         **PARAMETERS**
 
-        * *pt0* - an (x,y) tuple of one point on the intersection line.
-        * *pt1* - an (x,y) tuple of the second point on the intersection line.
+        * *pt0* - an (x, y) tuple of one point on the intersection line.
+        * *pt1* - an (x, y) tuple of the second point on the intersection line.
         * *width* - the width of the line to use. This approach works better when
                     for cases where the edges on an object are not always closed
                     and may have holes.
@@ -11208,70 +11180,70 @@ class Image:
 
         **RETURNS**
 
-        A list of two (x,y) tuples or an empty list.
+        A list of two (x, y) tuples or an empty list.
 
         **EXAMPLE**
 
         >>> img = Image("SimpleCV")
-        >>> a = (25,100)
-        >>> b = (225,110)
-        >>> pts = img.edgeIntersections(a,b,width=3)
-        >>> e = img.edges(0,100)
-        >>> e.drawLine(a,b,color=Color.RED)
-        >>> e.drawCircle(pts[0],10,color=Color.GREEN)
-        >>> e.drawCircle(pts[1],10,color=Color.GREEN)
+        >>> a = (25, 100)
+        >>> b = (225, 110)
+        >>> pts = img.edgeIntersections(a, b, width=3)
+        >>> e = img.edges(0, 100)
+        >>> e.drawLine(a, b, color=Color.RED)
+        >>> e.drawCircle(pts[0], 10, color=Color.GREEN)
+        >>> e.drawCircle(pts[1], 10, color=Color.GREEN)
         >>> e.show()
 
         img = Image("SimpleCV")
-        a = (25,100)
-        b = (225,100)
-        pts = img.edgeIntersections(a,b,width=3)
-        e = img.edges(0,100)
-        e.drawLine(a,b,color=Color.RED)
-        e.drawCircle(pts[0],10,color=Color.GREEN)
-        e.drawCircle(pts[1],10,color=Color.GREEN)
+        a = (25, 100)
+        b = (225, 100)
+        pts = img.edgeIntersections(a, b, width=3)
+        e = img.edges(0, 100)
+        e.drawLine(a, b, color=Color.RED)
+        e.drawCircle(pts[0], 10, color=Color.GREEN)
+        e.drawCircle(pts[1], 10, color=Color.GREEN)
         e.show()
 
 
         """
         w = abs(pt0[0]-pt1[0])
         h = abs(pt0[1]-pt1[1])
-        x = np.min([pt0[0],pt1[0]])
-        y = np.min([pt0[1],pt1[1]])
-        if( w <= 0 ):
+        x = np.min([pt0[0], pt1[0]])
+        y = np.min([pt0[1], pt1[1]])
+        if w <= 0:
             w = width
-            x = np.clip(x-(width/2),0,x-(width/2))
-        if( h <= 0 ):
+            x = np.clip(x-(width/2), 0, x-(width/2))
+        if h <= 0:
             h = width
-            y = np.clip(y-(width/2),0,y-(width/2))
+            y = np.clip(y-(width/2), 0, y-(width/2))
         #got some corner cases to catch here
-        p0p = np.array([(pt0[0]-x,pt0[1]-y)])
-        p1p = np.array([(pt1[0]-x,pt1[1]-y)])
-        edges = self.crop(x,y,w,h)._getEdgeMap(canny1, canny2)
-        line = cv.CreateImage((w,h),cv.IPL_DEPTH_8U,1)
+        p0p = np.array([(pt0[0]-x, pt0[1]-y)])
+        p1p = np.array([(pt1[0]-x, pt1[1]-y)])
+        edges = self.crop(x, y, w, h)._getEdgeMap(canny1, canny2)
+        line = cv.CreateImage((w, h), cv.IPL_DEPTH_8U, 1)
         cv.Zero(line)
-        cv.Line(line,((pt0[0]-x),(pt0[1]-y)),((pt1[0]-x),(pt1[1]-y)),cv.Scalar(255.00),width,8)
-        cv.Mul(line,edges,line)
+        cv.Line(line, ((pt0[0]-x), (pt0[1]-y)), ((pt1[0]-x), (pt1[1]-y)), cv.Scalar(255.00), width, 8)
+        cv.Mul(line, edges, line)
         intersections = uint8(np.array(cv.GetMat(line)).transpose())
-        (xs,ys) = np.where(intersections==255)
-        points = zip(xs,ys)
+        (xs, ys) = np.where(intersections==255)
+        points = zip(xs, ys)
         if(len(points)==0):
-            return [None,None]
-        A = np.argmin(spsd.cdist(p0p,points,'cityblock'))
-        B = np.argmin(spsd.cdist(p1p,points,'cityblock'))
-        ptA = (int(xs[A]+x),int(ys[A]+y))
-        ptB = (int(xs[B]+x),int(ys[B]+y))
+            return [None, None]
+        A = np.argmin(spsd.cdist(p0p, points, 'cityblock'))
+        B = np.argmin(spsd.cdist(p1p, points, 'cityblock'))
+        ptA = (int(xs[A]+x), int(ys[A]+y))
+        ptB = (int(xs[B]+x), int(ys[B]+y))
         # we might actually want this to be list of all the points
         return [ptA, ptB]
 
 
-    def fitContour(self, initial_curve, window=(11,11), params=(0.1,0.1,0.1),doAppx=True,appx_level=1):
+    def fitContour(self, initial_curve, window=(11, 11), params=(0.1, 0.1, 0.1), doAppx=True, appx_level=1):
         """
         
         **SUMMARY**
 
         This method tries to fit a list of points to lines in the image. The list of points
-        is a list of (x,y) tuples that are near (i.e. within the window size) of the line
+        is a list of (x, y) tuples that are near (i.e. within the window size) of the line
         you want to fit in the image. This method uses a binary such as the result of calling
         edges.
 
@@ -11280,10 +11252,10 @@ class Image:
 
         **PARAMETERS**
 
-        * *initial_curve* - region of the form [(x0,y0),(x1,y1)...] that are the initial conditions to fit.
+        * *initial_curve* - region of the form [(x0, y0), (x1, y1)...] that are the initial conditions to fit.
         * *window* - the search region around each initial point to look for a solution.
         * *params* - The alpha, beta, and gamma parameters for the active contours
-          algorithm as a list [alpha,beta,gamma].
+          algorithm as a list [alpha, beta, gamma].
         * *doAppx* - post process the snake into a polynomial approximation. Basically
           this flag will clean up the output of the contour algorithm.
         * *appx_level* - how much to approximate the snake, higher numbers mean more approximation.
@@ -11310,46 +11282,46 @@ class Image:
 
         **RETURNS**
 
-        A list of (x,y) tuples that approximate the curve. If you do not use
+        A list of (x, y) tuples that approximate the curve. If you do not use
         approximation the list should be the same length as the input list length.
 
         **EXAMPLE**
 
         >>> img = Image("lenna")
-        >>> edges = img.edges(t1=120,t2=155)
-        >>> guess = [(311,284),(313,270),(320,259),(330,253),(347,245)]
+        >>> edges = img.edges(t1=120, t2=155)
+        >>> guess = [(311, 284), (313, 270), (320, 259), (330, 253), (347, 245)]
         >>> result = edges.fitContour(guess)
-        >>> img.drawPoints(guess,color=Color.RED)
-        >>> img.drawPoints(result,color=Color.GREEN)
+        >>> img.drawPoints(guess, color=Color.RED)
+        >>> img.drawPoints(result, color=Color.GREEN)
         >>> img.show()
 
         """
         alpha = [params[0]]
         beta= [params[1]]
         gamma = [params[2]]
-        if( window[0]%2 == 0 ):
-            window = (window[0]+1,window[1])
+        if window[0]%2 == 0:
+            window = (window[0]+1, window[1])
             logger.warn("Yo dawg, just a heads up, snakeFitPoints wants an odd window size. I fixed it for you, but you may want to take a look at your code.")
-        if( window[1]%2 == 0 ):
-            window = (window[0],window[1]+1)
+        if window[1]%2 == 0:
+            window = (window[0], window[1]+1)
             logger.warn("Yo dawg, just a heads up, snakeFitPoints wants an odd window size. I fixed it for you, but you may want to take a look at your code.")
-        raw = cv.SnakeImage(self._getGrayscaleBitmap(),initial_curve,alpha,beta,gamma,window,(cv.CV_TERMCRIT_ITER,10,0.01))
-        if( doAppx ):
+        raw = cv.SnakeImage(self._getGrayscaleBitmap(), initial_curve, alpha, beta, gamma, window, (cv.CV_TERMCRIT_ITER, 10, 0.01))
+        if doAppx:
             try:
                 import cv2
             except:
                 logger.warning("Can't Do snakeFitPoints without OpenCV >= 2.3.0")
                 return
-            appx = cv2.approxPolyDP(np.array([raw],'float32'),appx_level,True)
+            appx = cv2.approxPolyDP(np.array([raw], 'float32'), appx_level, True)
             retVal = []
             for p in appx:
-                retVal.append((int(p[0][0]),int(p[0][1])))
+                retVal.append((int(p[0][0]), int(p[0][1])))
         else:
             retVal = raw
 
         return retVal
 
-    def fitEdge(self,guess,window=10,threshold=128, measurements=5, darktolight=True, lighttodark=True,departurethreshold=1):
+    def fitEdge(self, guess, window=10, threshold=128, measurements=5, darktolight=True, lighttodark=True, departurethreshold=1):
       """
         **SUMMARY**
         
@@ -11358,7 +11330,7 @@ class Image:
 
         **PARAMETERS**
 
-        * *guess* - A tuples of the form ((x0,y0),(x1,y1)) which is an approximate guess
+        * *guess* - A tuples of the form ((x0, y0), (x1, y1)) which is an approximate guess
         * *window* - A window around the guess to search.
         * *threshold* - the threshold above which we count a pixel as a line
         * *measurements* -the number of line projections to use for fitting the line 
@@ -11378,12 +11350,12 @@ class Image:
       y2 = guess[1][1]
       dx = float((x2-x1))/(measurements-1)
       dy = float((y2-y1))/(measurements-1)
-      s = np.zeros((measurements,2))
+      s = np.zeros((measurements, 2))
       lpstartx = np.zeros(measurements)
       lpstarty = np.zeros(measurements)
       lpendx = np.zeros(measurements)
       lpendy = np.zeros(measurements)
-      linefitpts = np.zeros((measurements,2))
+      linefitpts = np.zeros((measurements, 2))
 
       #obtain equation for initial guess line
       if( x1==x2): #vertical line must be handled as special case since slope isn't defined
@@ -11397,12 +11369,12 @@ class Image:
             lpstarty[i] = s[i][1] 
             lpendx[i] = s[i][0] - window
             lpendy[i] = s[i][1] 
-            Cur_line = Line(self,((lpstartx[i],lpstarty[i]),(lpendx[i],lpendy[i])))
-            ((lpstartx[i],lpstarty[i]),(lpendx[i],lpendy[i])) = Cur_line.cropToImageEdges().end_points
+            Cur_line = Line(self, ((lpstartx[i], lpstarty[i]), (lpendx[i], lpendy[i])))
+            ((lpstartx[i], lpstarty[i]), (lpendx[i], lpendy[i])) = Cur_line.cropToImageEdges().end_points
 
             searchLines.append(Cur_line)
-            tmp = self.getThresholdCrossing((int(lpstartx[i]),int(lpstarty[i])),(int(lpendx[i]),int(lpendy[i])),threshold=threshold,lighttodark=lighttodark, darktolight=darktolight, departurethreshold=departurethreshold)
-            fitPoints.append(Circle(self,tmp[0],tmp[1],3))
+            tmp = self.getThresholdCrossing((int(lpstartx[i]), int(lpstarty[i])), (int(lpendx[i]), int(lpendy[i])), threshold=threshold, lighttodark=lighttodark, darktolight=darktolight, departurethreshold=departurethreshold)
+            fitPoints.append(Circle(self, tmp[0], tmp[1], 3))
             linefitpts[i] = tmp
 
       else:
@@ -11414,47 +11386,47 @@ class Image:
         for i in xrange(0, measurements):
             s[i][0] = x1 + i * dx
             s[i][1] = y1 + i * dy
-            fx = (math.sqrt(math.pow(window,2))/(1+mo))/2
+            fx = (math.sqrt(math.pow(window, 2))/(1+mo))/2
             fy = fx * mo 
             lpstartx[i] = s[i][0] + fx
             lpstarty[i] = s[i][1] + fy
             lpendx[i] = s[i][0] - fx
             lpendy[i] = s[i][1] - fy
-            Cur_line = Line(self,((lpstartx[i],lpstarty[i]),(lpendx[i],lpendy[i])))
-            ((lpstartx[i],lpstarty[i]),(lpendx[i],lpendy[i])) = Cur_line.cropToImageEdges().end_points
+            Cur_line = Line(self, ((lpstartx[i], lpstarty[i]), (lpendx[i], lpendy[i])))
+            ((lpstartx[i], lpstarty[i]), (lpendx[i], lpendy[i])) = Cur_line.cropToImageEdges().end_points
             searchLines.append(Cur_line)
-            tmp = self.getThresholdCrossing((int(lpstartx[i]),int(lpstarty[i])),(int(lpendx[i]),int(lpendy[i])),threshold=threshold,lighttodark=lighttodark, darktolight=darktolight,departurethreshold=departurethreshold)
-            fitPoints.append((tmp[0],tmp[1]))
+            tmp = self.getThresholdCrossing((int(lpstartx[i]), int(lpstarty[i])), (int(lpendx[i]), int(lpendy[i])), threshold=threshold, lighttodark=lighttodark, darktolight=darktolight, departurethreshold=departurethreshold)
+            fitPoints.append((tmp[0], tmp[1]))
             linefitpts[i] = tmp
 
       badpts = []    
       for j in range(len(linefitpts)):
-        if (linefitpts[j,0] == -1) or (linefitpts[j,1] == -1):
+        if (linefitpts[j, 0] == -1) or (linefitpts[j, 1] == -1):
             badpts.append(j)
       for pt in badpts:
-        linefitpts = np.delete(linefitpts,pt,axis=0)
+        linefitpts = np.delete(linefitpts, pt, axis=0)
 
-      x = linefitpts[:,0]
-      y = linefitpts[:,1]
+      x = linefitpts[:, 0]
+      y = linefitpts[:, 1]
       ymin = np.min(y)
       ymax = np.max(y)
       xmax = np.max(x)
       xmin = np.min(x)
 
-      if( (xmax-xmin) > (ymax-ymin) ):
+      if (xmax-xmin) > (ymax-ymin):
           # do the least squares
-          A = np.vstack([x,np.ones(len(x))]).T
-          m,c = nla.lstsq(A,y)[0]
+          A = np.vstack([x, np.ones(len(x))]).T
+          m, c = nla.lstsq(A, y)[0]
           y0 = int(m*xmin+c)
           y1 = int(m*xmax+c)
-          finalLine = Line(self,((xmin,y0),(xmax,y1)))
+          finalLine = Line(self, ((xmin, y0), (xmax, y1)))
       else:
           # do the least squares
-          A = np.vstack([y,np.ones(len(y))]).T
-          m,c = nla.lstsq(A,x)[0]
+          A = np.vstack([y, np.ones(len(y))]).T
+          m, c = nla.lstsq(A, x)[0]
           x0 = int(ymin*m+c)
           x1 = int(ymax*m+c)
-          finalLine = Line(self,((x0,ymin),(x1,ymax)))
+          finalLine = Line(self, ((x0, ymin), (x1, ymax)))
 
       return finalLine, searchLines, fitPoints
 
@@ -11468,7 +11440,7 @@ class Image:
 
         **PARAMETERS**
 
-        * *p1, p2* - the starting and ending points in tuple form e.g. (1,2)
+        * *p1, p2* - the starting and ending points in tuple form e.g. (1, 2)
         * *threshold* pixel value of desired threshold crossing
         * *departurethreshold* - noise reduction technique.  requires this many points to be above the threshold to trigger crossing
 
@@ -11479,11 +11451,11 @@ class Image:
         **EXAMPLE**
 
         >>> img = Image("lenna")
-        >>> myColor = [0,0,0]
+        >>> myColor = [0, 0, 0]
         >>> sl = img.getHorzScanline(422)
         >>> sll = sl.tolist()
         >>> for p in sll:
-        >>>    if( p == myColor ):
+        >>>    if p == myColor:
         >>>        # do something
 
         **SEE ALSO**
@@ -11493,7 +11465,7 @@ class Image:
         :py:meth:`getVertScanline`
 
         """
-        linearr = self.getDiagonalScanlineGrey(pt1,pt2)
+        linearr = self.getDiagonalScanlineGrey(pt1, pt2)
         ind = 0
         crossing = -1
         if departurethreshold==1:
@@ -11510,9 +11482,9 @@ class Image:
             if crossing != -1:
                 xind = pt1[0] + int(round((pt2[0]-pt1[0])*crossing/linearr.size))
                 yind = pt1[1] + int(round((pt2[1]-pt1[1])*crossing/linearr.size))
-                retVal = (xind,yind)
+                retVal = (xind, yind)
             else:
-                retVal = (-1,-1)
+                retVal = (-1, -1)
                 #print 'Edgepoint not found.'
         else:
             while ind < linearr.size-(departurethreshold+1):
@@ -11528,9 +11500,9 @@ class Image:
             if crossing != -1:
                 xind = pt1[0] + int(round((pt2[0]-pt1[0])*crossing/linearr.size))
                 yind = pt1[1] + int(round((pt2[1]-pt1[1])*crossing/linearr.size))
-                retVal = (xind,yind)
+                retVal = (xind, yind)
             else:
-                retVal = (-1,-1)
+                retVal = (-1, -1)
                 #print 'Edgepoint not found.'
         return retVal
         
@@ -11544,7 +11516,7 @@ class Image:
 
         **PARAMETERS**
 
-        * *pt1, pt2* - the starting and ending points in tuple form e.g. (1,2)
+        * *pt1, pt2* - the starting and ending points in tuple form e.g. (1, 2)
 
         **RETURNS**
 
@@ -11553,7 +11525,7 @@ class Image:
         **EXAMPLE**
 
         >>> img = Image("lenna")
-        >>> sl = img.getDiagonalScanlineGrey((100,200),(300,400))
+        >>> sl = img.getDiagonalScanlineGrey((100, 200), (300, 400))
         
 
         **SEE ALSO**
@@ -11566,17 +11538,17 @@ class Image:
         if not self.isGray():
             self = self.toGray()
         #self = self._getGrayscaleBitmap()
-        width = round(math.sqrt(math.pow(pt2[0]-pt1[0],2) + math.pow(pt2[1]-pt1[1],2)))
+        width = round(math.sqrt(math.pow(pt2[0]-pt1[0], 2) + math.pow(pt2[1]-pt1[1], 2)))
         retVal = np.zeros(width)
         
         for x in range(0, retVal.size):
             xind = pt1[0] + int(round((pt2[0]-pt1[0])*x/retVal.size))
             yind = pt1[1] + int(round((pt2[1]-pt1[1])*x/retVal.size))
-            current_pixel = self.getPixel(xind,yind)
+            current_pixel = self.getPixel(xind, yind)
             retVal[x] = current_pixel[0]
         return retVal
 
-    def fitLines(self,guesses,window=10,threshold=128):
+    def fitLines(self, guesses, window=10, threshold=128):
         """
         **SUMMARY**
 
@@ -11585,7 +11557,7 @@ class Image:
 
         **PARAMETERS**
 
-        * *guesses* - A list of tuples of the form ((x0,y0),(x1,y1)) where each of the lines
+        * *guesses* - A list of tuples of the form ((x0, y0), (x1, y1)) where each of the lines
           is an approximate guess.
         * *window* - A window around the guess to search.
         * *threshold* - the threshold above which we count a pixel as a line
@@ -11598,11 +11570,11 @@ class Image:
 
 
         >>> img = Image("lsq.png")
-        >>> guesses = [((313,150),(312,332)),((62,172),(252,52)),((102,372),(182,182)),((372,62),(572,162)),((542,362),(462,182)),((232,412),(462,423))]
-        >>> l = img.fitLines(guesses,window=10)
-        >>> l.draw(color=Color.RED,width=3)
+        >>> guesses = [((313, 150), (312, 332)), ((62, 172), (252, 52)), ((102, 372), (182, 182)), ((372, 62), (572, 162)), ((542, 362), (462, 182)), ((232, 412), (462, 423))]
+        >>> l = img.fitLines(guesses, window=10)
+        >>> l.draw(color=Color.RED, width=3)
         >>> for g in guesses:
-        >>>    img.drawLine(g[0],g[1],color=Color.YELLOW)
+        >>>    img.drawLine(g[0], g[1], color=Color.YELLOW)
 
         >>> img.show()
         """
@@ -11611,53 +11583,53 @@ class Image:
         i =0
         for g in guesses:
             # Guess the size of the crop region from the line guess and the window.
-            ymin = np.min([g[0][1],g[1][1]])
-            ymax = np.max([g[0][1],g[1][1]])
-            xmin = np.min([g[0][0],g[1][0]])
-            xmax = np.max([g[0][0],g[1][0]])
+            ymin = np.min([g[0][1], g[1][1]])
+            ymax = np.max([g[0][1], g[1][1]])
+            xmin = np.min([g[0][0], g[1][0]])
+            xmax = np.max([g[0][0], g[1][0]])
 
-            xminW = np.clip(xmin-window,0,self.width)
-            xmaxW = np.clip(xmax+window,0,self.width)
-            yminW = np.clip(ymin-window,0,self.height)
-            ymaxW = np.clip(ymax+window,0,self.height)
-            temp = self.crop(xminW,yminW,xmaxW-xminW,ymaxW-yminW)
+            xminW = np.clip(xmin-window, 0, self.width)
+            xmaxW = np.clip(xmax+window, 0, self.width)
+            yminW = np.clip(ymin-window, 0, self.height)
+            ymaxW = np.clip(ymax+window, 0, self.height)
+            temp = self.crop(xminW, yminW, xmaxW-xminW, ymaxW-yminW)
             temp = temp.getGrayNumpy()
 
             # pick the lines above our threshold
-            x,y = np.where(temp>threshold)
-            pts = zip(x,y)
-            gpv = np.array([float(g[0][0]-xminW),float(g[0][1]-yminW)])
-            gpw = np.array([float(g[1][0]-xminW),float(g[1][1]-yminW)])
+            x, y = np.where(temp>threshold)
+            pts = zip(x, y)
+            gpv = np.array([float(g[0][0]-xminW), float(g[0][1]-yminW)])
+            gpw = np.array([float(g[1][0]-xminW), float(g[1][1]-yminW)])
             def lineSegmentToPoint(p):
                 w = gpw
                 v = gpv
-                #print w,v
-                p = np.array([float(p[0]),float(p[1])])
+                #print w, v
+                p = np.array([float(p[0]), float(p[1])])
                 l2 = np.sum((w-v)**2)
-                t = float(np.dot((p-v),(w-v))) / float(l2)
-                if( t < 0.00 ):
+                t = float(np.dot((p-v), (w-v))) / float(l2)
+                if t < 0.00:
                     return np.sqrt(np.sum((p-v)**2))
-                elif(t > 1.0):
+                elif t > 1.0:
                     return np.sqrt(np.sum((p-w)**2))
                 else:
                     project = v + (t*(w-v))
                     return np.sqrt(np.sum((p-project)**2))
             # http://stackoverflow.com/questions/849211/shortest-distance-between-a-point-and-a-line-segment
 
-            distances = np.array(map(lineSegmentToPoint,pts))
+            distances = np.array(map(lineSegmentToPoint, pts))
             closepoints = np.where(distances<window)[0]
 
             pts = np.array(pts)
 
-            if( len(closepoints) < 3 ):
+            if len(closepoints) < 3:
                 continue
 
             good_pts = pts[closepoints]
             good_pts = good_pts.astype(float)
 
 
-            x = good_pts[:,0]
-            y = good_pts[:,1]
+            x = good_pts[:, 0]
+            y = good_pts[:, 1]
             # do the shift from our crop
             # generate the line values
             x = x + xminW
@@ -11668,24 +11640,24 @@ class Image:
             xmax = np.max(x)
             xmin = np.min(x)
 
-            if( (xmax-xmin) > (ymax-ymin) ):
+            if (xmax-xmin) > (ymax-ymin):
                 # do the least squares
-                A = np.vstack([x,np.ones(len(x))]).T
-                m,c = nla.lstsq(A,y)[0]
+                A = np.vstack([x, np.ones(len(x))]).T
+                m, c = nla.lstsq(A, y)[0]
                 y0 = int(m*xmin+c)
                 y1 = int(m*xmax+c)
-                retVal.append(Line(self,((xmin,y0),(xmax,y1))))
+                retVal.append(Line(self, ((xmin, y0), (xmax, y1))))
             else:
                 # do the least squares
-                A = np.vstack([y,np.ones(len(y))]).T
-                m,c = nla.lstsq(A,x)[0]
+                A = np.vstack([y, np.ones(len(y))]).T
+                m, c = nla.lstsq(A, x)[0]
                 x0 = int(ymin*m+c)
                 x1 = int(ymax*m+c)
-                retVal.append(Line(self,((x0,ymin),(x1,ymax))))
+                retVal.append(Line(self, ((x0, ymin), (x1, ymax))))
 
         return retVal
 
-    def fitLinePoints(self,guesses,window=(11,11), samples=20,params=(0.1,0.1,0.1)):
+    def fitLinePoints(self, guesses, window=(11, 11), samples=20, params=(0.1, 0.1, 0.1)):
         """
         **DESCRIPTION**
 
@@ -11695,25 +11667,25 @@ class Image:
         **PARAMETERS**
 
         * *guesses* - A set of lines that we wish to fit to. The lines are specified
-          as a list of tuples of (x,y) tuples. E.g. [((x0,y0),(x1,y1))....]
+          as a list of tuples of (x, y) tuples. E.g. [((x0, y0), (x1, y1))....]
         * *window* - The search window in pixels for the active contours approach.
-        * *samples* - The number of points to sample along the input line,
+        * *samples* - The number of points to sample along the input line, 
           these are the initial conditions for active contours method.
         * *params* - the alpha, beta, and gamma values for the active contours routine.
 
         **RETURNS**
 
-        A list of fitted contour points. Each contour is a list of (x,y) tuples.
+        A list of fitted contour points. Each contour is a list of (x, y) tuples.
 
         **EXAMPLE**
 
         >>> img = Image("lsq.png")
-        >>> guesses = [((313,150),(312,332)),((62,172),(252,52)),((102,372),(182,182)),((372,62),(572,162)),((542,362),(462,182)),((232,412),(462,423))]
+        >>> guesses = [((313, 150), (312, 332)), ((62, 172), (252, 52)), ((102, 372), (182, 182)), ((372, 62), (572, 162)), ((542, 362), (462, 182)), ((232, 412), (462, 423))]
         >>> r = img.fitLinePoints(guesses)
         >>> for rr in r:
-        >>>    img.drawLine(rr[0],rr[1],color=Color.RED,width=3)
+        >>>    img.drawLine(rr[0], rr[1], color=Color.RED, width=3)
         >>> for g in guesses:
-        >>>    img.drawLine(g[0],g[1],color=Color.YELLOW)
+        >>>    img.drawLine(g[0], g[1], color=Color.YELLOW)
 
         >>> img.show()
 
@@ -11725,17 +11697,17 @@ class Image:
             dx = float(g[1][0]-g[0][0])
             dy = float(g[1][1]-g[0][1])
             l = np.sqrt((dx*dx)+(dy*dy))
-            if( l <= 0 ):
+            if l <= 0:
                 logger.warning("Can't Do snakeFitPoints without OpenCV >= 2.3.0")
                 return
 
             dx = dx/l
             dy = dy/l
-            for i in range(-1,samples+1):
+            for i in range(-1, samples+1):
                 t = i*(l/samples)
-                bestGuess.append((int(g[0][0]+(t*dx)),int(g[0][1]+(t*dy))))
+                bestGuess.append((int(g[0][0]+(t*dx)), int(g[0][1]+(t*dy))))
             # do the snake fitting
-            appx = self.fitContour(bestGuess,window=window,params=params,doAppx=False)
+            appx = self.fitContour(bestGuess, window=window, params=params, doAppx=False)
             pts.append(appx)
 
         return pts
@@ -11750,7 +11722,7 @@ class Image:
 
         **PARAMETERS**
 
-        * *pts* - pts a list of (x,y) points.
+        * *pts* - pts a list of (x, y) points.
         * *color* - a color for our points.
         * *sz* - the circle radius for our points.
         * *width* - if -1 fill the point, otherwise the size of point border
@@ -11762,11 +11734,11 @@ class Image:
         **EXAMPLE**
 
         >>> img = Image("lenna")
-        >>> img.drawPoints([(10,10),(30,30)])
+        >>> img.drawPoints([(10, 10), (30, 30)])
         >>> img.show()
         """
         for p in pts:
-            self.drawCircle(p,sz,color,width)
+            self.drawCircle(p, sz, color, width)
         return None
 
     def sobel(self, xorder=1, yorder=1, doGray=True, aperture=5, aperature=None):
@@ -11800,38 +11772,38 @@ class Image:
             logger.warning("Can't do Sobel without OpenCV >= 2.3.0")
             return None
 
-        if( aperture != 1 and aperture != 3 and aperture != 5 and aperture != 7 ):
-            logger.warning("Bad Sobel Aperture, values are [1,3,5,7].")
+        if aperture != 1 and aperture != 3 and aperture != 5 and aperture != 7:
+            logger.warning("Bad Sobel Aperture, values are [1, 3, 5, 7].")
             return None
 
-        if( doGray ):
-            dst = cv2.Sobel(self.getGrayNumpy(),cv2.cv.CV_32F,xorder,yorder,ksize=aperture)
+        if doGray:
+            dst = cv2.Sobel(self.getGrayNumpy(), cv2.cv.CV_32F, xorder, yorder, ksize=aperture)
             minv = np.min(dst)
             maxv = np.max(dst)
             cscale = 255/(maxv-minv)
             shift =  -1*(minv)
 
-            t = np.zeros(self.size(),dtype='uint8')
-            t = cv2.convertScaleAbs(dst,t,cscale,shift/255.0)
+            t = np.zeros(self.size(), dtype='uint8')
+            t = cv2.convertScaleAbs(dst, t, cscale, shift/255.0)
             retVal = Image(t)
 
         else:
             layers = self.splitChannels(grayscale=False)
             sobel_layers = []
             for layer in layers:
-                dst = cv2.Sobel(layer.getGrayNumpy(),cv2.cv.CV_32F,xorder,yorder,ksize=aperture)
+                dst = cv2.Sobel(layer.getGrayNumpy(), cv2.cv.CV_32F, xorder, yorder, ksize=aperture)
 
                 minv = np.min(dst)
                 maxv = np.max(dst)
                 cscale = 255/(maxv-minv)
                 shift =  -1*(minv)
 
-                t = np.zeros(self.size(),dtype='uint8')
-                t = cv2.convertScaleAbs(dst,t,cscale,shift/255.0)
+                t = np.zeros(self.size(), dtype='uint8')
+                t = cv2.convertScaleAbs(dst, t, cscale, shift/255.0)
                 sobel_layers.append(Image(t))
-            b,g,r = sobel_layers
+            b, g, r = sobel_layers
 
-            retVal = self.mergeChannels(b,g,r)
+            retVal = self.mergeChannels(b, g, r)
         return retVal
 
     def track(self, method="CAMShift", ts=None, img=None, bb=None, **kwargs):
@@ -11893,7 +11865,7 @@ class Image:
 
         docs from http://docs.opencv.org/
         maxCorners - Maximum number of corners to return in goodFeaturesToTrack. If there are more corners than are found, the strongest of them is returned. Default: 4000
-        qualityLevel - Parameter characterizing the minimal accepted quality of image corners. The parameter value is multiplied by the best corner quality measure, which is the minimal eigenvalue or the Harris function response. The corners with the quality measure less than the product are rejected. For example, if the best corner has the quality measure = 1500,  and the qualityLevel=0.01 , then all the corners with the quality measure less than 15 are rejected. Default: 0.08
+        qualityLevel - Parameter characterizing the minimal accepted quality of image corners. The parameter value is multiplied by the best corner quality measure, which is the minimal eigenvalue or the Harris function response. The corners with the quality measure less than the product are rejected. For example, if the best corner has the quality measure = 1500,  and the qualityLevel=0.01, then all the corners with the quality measure less than 15 are rejected. Default: 0.08
         minDistance - Minimum possible Euclidean distance between the returned corners. Default: 2
         blockSize - Size of an average block for computing a derivative covariation matrix over each pixel neighborhood. Default: 3
         winSize - size of the search window at each pyramid level. Default: (10, 10)
@@ -11930,7 +11902,7 @@ class Image:
         feature points are selected symmetrically in the bounding box.
         Total number of feature points to be tracked = numM * numN.
 
-        If the width and height of bounding box is 200 and 100 respectively, and numM = 10 and numN = 10,
+        If the width and height of bounding box is 200 and 100 respectively, and numM = 10 and numN = 10, 
         there will be 10 points in the bounding box equally placed(10 points in 200 pixels) in each row. and 10 equally placed
         points (10 points in 100 pixels) in each column. So total number of tracking points = 100.
 
@@ -11988,13 +11960,13 @@ class Image:
         Bounding box and image will be taken from the trackset.
         So. now
 
-        >>> ts = new_img.track("camshift",ts)
+        >>> ts = new_img.track("camshift", ts)
 
         The new Tracking feature will be appended to the given trackset and that will be returned.
         So, to use it in loop::
 
           img = cam.getImage()
-          bb = (img.width/4,img.height/4,img.width/4,img.height/4)
+          bb = (img.width/4, img.height/4, img.width/4, img.height/4)
           ts = img.track(img=img, bb=bb)
           while (True):
               img = cam.getImage()
@@ -12003,7 +11975,7 @@ class Image:
           ts = []
           while (some_condition_here):
               img = cam.getImage()
-              ts = img.track("camshift",ts,img0,bb)
+              ts = img.track("camshift", ts, img0, bb)
 
         
         now here in first loop iteration since ts is empty, img0 and bb will be considered.
@@ -12145,8 +12117,8 @@ class Image:
         Convert this image to a 32bit floating point image.
 
         """
-        retVal = cv.CreateImage((self.width,self.height), cv.IPL_DEPTH_32F, 3)
-        cv.Convert(self.getBitmap(),retVal)
+        retVal = cv.CreateImage((self.width, self.height), cv.IPL_DEPTH_32F, 3)
+        cv.Convert(self.getBitmap(), retVal)
         return retVal
 
     def __getstate__(self):
@@ -12281,7 +12253,7 @@ class Image:
         cv.Flip(retVal, retVal, 1)#horizontal
         return(Image(retVal, colorSpace=self._colorSpace))
 
-    def verticalHistogram(self, bins=10, threshold=128,normalize=False,forPlot=False):
+    def verticalHistogram(self, bins=10, threshold=128, normalize=False, forPlot=False):
         """
         
         **DESCRIPTION**
@@ -12313,7 +12285,7 @@ class Image:
         
           >>> import matplotlib.pyplot as plt
           >>> img = Image('lenna')
-          >>> plt.bar(*img.verticalHistogram(threshold=128,bins=10,normalize=False,forPlot=True),color='y')
+          >>> plt.bar(*img.verticalHistogram(threshold=128, bins=10, normalize=False, forPlot=True), color='y')
           >>> plt.show()
         
         
@@ -12323,23 +12295,23 @@ class Image:
         See: http://matplotlib.org/api/pyplot_api.html?highlight=hist#matplotlib.pyplot.hist
 
         """
-        if( bins <= 0 ):
+        if bins <= 0:
             raise Exception("Not enough bins")
 
         img = self.getGrayNumpy()
         pts = np.where(img>threshold)
         y = pts[1]
-        hist = np.histogram(y,bins=bins,range=(0,self.height),normed=normalize)
+        hist = np.histogram(y, bins=bins, range=(0, self.height), normed=normalize)
         retVal = None
-        if( forPlot ):
+        if forPlot:
             # for using matplotlib bar command
             # bin labels, bin values, bin width
-            retVal=(hist[1][0:-1],hist[0],self.height/bins)
+            retVal=(hist[1][0:-1], hist[0], self.height/bins)
         else:
             retVal = hist[0]
         return retVal
 
-    def horizontalHistogram(self, bins=10, threshold=128,normalize=False,forPlot=False):
+    def horizontalHistogram(self, bins=10, threshold=128, normalize=False, forPlot=False):
         """
         
         **DESCRIPTION**
@@ -12370,7 +12342,7 @@ class Image:
 
         >>>> import matplotlib.pyplot as plt
         >>>> img = Image('lenna')
-        >>>> plt.bar(img.horizontalHistogram(threshold=128,bins=10,normalize=False,forPlot=True),color='y')
+        >>>> plt.bar(img.horizontalHistogram(threshold=128, bins=10, normalize=False, forPlot=True), color='y')
         >>>> plt.show())
 
         **NOTES**
@@ -12379,23 +12351,23 @@ class Image:
         See: http://matplotlib.org/api/pyplot_api.html?highlight=hist#matplotlib.pyplot.hist
 
         """
-        if( bins <= 0 ):
+        if bins <= 0:
             raise Exception("Not enough bins")
 
         img = self.getGrayNumpy()
         pts = np.where(img>threshold)
         x = pts[0]
-        hist = np.histogram(x,bins=bins,range=(0,self.width),normed=normalize)
+        hist = np.histogram(x, bins=bins, range=(0, self.width), normed=normalize)
         retVal = None
-        if( forPlot ):
+        if forPlot:
             # for using matplotlib bar command
             # bin labels, bin values, bin width
-            retVal=(hist[1][0:-1],hist[0],self.width/bins)
+            retVal=(hist[1][0:-1], hist[0], self.width/bins)
         else:
             retVal = hist[0]
         return retVal
 
-    def getLineScan(self,x=None,y=None,pt1=None,pt2=None,channel = -1):
+    def getLineScan(self, x=None, y=None, pt1=None, pt2=None, channel = -1):
         """
         **SUMMARY**
 
@@ -12409,7 +12381,7 @@ class Image:
         * *y* - Take a horizontal line scan at the row y.
         * *pt1* - Take a line scan between two points on the line the line scan values always go in the +x direction
         * *pt2* - Second parameter for a non-vertical or horizontal line scan.
-        * *channel* - To select a channel. eg: selecting a channel RED,GREEN or BLUE. If set to -1 it operates with gray scale values
+        * *channel* - To select a channel. eg: selecting a channel RED, GREEN or BLUE. If set to -1 it operates with gray scale values
         
         
         **RETURNS**
@@ -12422,7 +12394,7 @@ class Image:
         >>>> img = Image('lenna')
         >>>> a = img.getLineScan(x=10)
         >>>> b = img.getLineScan(y=10)
-        >>>> c = img.getLineScan(pt1 = (10,10), pt2 = (500,500) )
+        >>>> c = img.getLineScan(pt1 = (10, 10), pt2 = (500, 500) )
         >>>> plt.plot(a)
         >>>> plt.plot(b)
         >>>> plt.plot(c)
@@ -12434,7 +12406,7 @@ class Image:
             img = self.getGrayNumpy()
         else:
             try:
-                img = self.getNumpy()[:,:,channel]
+                img = self.getNumpy()[:, :, channel]
             except IndexError:
                 print 'Channel missing!'
                 return None
@@ -12442,29 +12414,29 @@ class Image:
         retVal = None
         if( x is not None and y is None and pt1 is None and pt2 is None):
             if( x >= 0 and x < self.width):
-                retVal = LineScan(img[x,:])
+                retVal = LineScan(img[x, :])
                 retVal.image = self
-                retVal.pt1 = (x,0)
-                retVal.pt2 = (x,self.height)
+                retVal.pt1 = (x, 0)
+                retVal.pt2 = (x, self.height)
                 retVal.col = x
-                x = np.ones((1,self.height))[0]*x
-                y = range(0,self.height,1)
-                pts = zip(x,y)
+                x = np.ones((1, self.height))[0]*x
+                y = range(0, self.height, 1)
+                pts = zip(x, y)
                 retVal.pointLoc = pts
             else:
                 warnings.warn("ImageClass.getLineScan - that is not valid scanline.")
                 return None
 
-        elif( x is None and y is not None and pt1 is None and pt2 is None):
+        elif  x is None and y is not None and pt1 is None and pt2 is None:
             if( y >= 0 and y < self.height):
-                retVal = LineScan(img[:,y])
+                retVal = LineScan(img[:, y])
                 retVal.image = self
-                retVal.pt1 = (0,y)
-                retVal.pt2 = (self.width,y)
+                retVal.pt1 = (0, y)
+                retVal.pt2 = (self.width, y)
                 retVal.row = y
-                y = np.ones((1,self.width))[0]*y
-                x = range(0,self.width,1)
-                pts = zip(x,y)
+                y = np.ones((1, self.width))[0]*y
+                x = range(0, self.width, 1)
+                pts = zip(x, y)
                 retVal.pointLoc = pts
 
             else:
@@ -12472,13 +12444,13 @@ class Image:
                 return None
 
             pass
-        elif( (isinstance(pt1,tuple) or isinstance(pt1,list)) and
-              (isinstance(pt2,tuple) or isinstance(pt2,list)) and
+        elif( (isinstance(pt1, tuple) or isinstance(pt1, list)) and
+              (isinstance(pt2, tuple) or isinstance(pt2, list)) and
               len(pt1) == 2 and len(pt2) == 2 and
               x is None and y is None):
 
-            pts = self.bresenham_line(pt1,pt2)
-            retVal = LineScan([img[p[0],p[1]] for p in pts])
+            pts = self.bresenham_line(pt1, pt2)
+            retVal = LineScan([img[p[0], p[1]] for p in pts])
             retVal.pointLoc = pts
             retVal.image = self
             retVal.pt1 = pt1
@@ -12491,7 +12463,7 @@ class Image:
         retVal.channel = channel
         return retVal
 
-    def setLineScan(self, linescan,x=None,y=None,pt1=None,pt2=None,channel = -1):
+    def setLineScan(self, linescan, x=None, y=None, pt1=None, pt2=None, channel = -1):
         """
         **SUMMARY**
 
@@ -12504,7 +12476,7 @@ class Image:
         * *y* - put line scan at the row y.
         * *pt1* - put line scan between two points on the line the line scan values always go in the +x direction
         * *pt2* - Second parameter for a non-vertical or horizontal line scan.
-        * *channel* - To select a channel. eg: selecting a channel RED,GREEN or BLUE. If set to -1 it operates with gray scale values
+        * *channel* - To select a channel. eg: selecting a channel RED, GREEN or BLUE. If set to -1 it operates with gray scale values
         
         
         **RETURNS**
@@ -12527,7 +12499,7 @@ class Image:
             img = np.copy(self.getGrayNumpy())
         else:
             try:
-                img = np.copy(self.getNumpy()[:,:,channel])
+                img = np.copy(self.getNumpy()[:, :, channel])
             except IndexError:
                 print 'Channel missing!'
                 return None
@@ -12544,7 +12516,7 @@ class Image:
                     pt1=None
                     pt2=None
 
-                elif( pt1[1] == pt2[1] and np.abs(pt1[0]-pt2[0])==self.width):
+                elif  pt1[1] == pt2[1] and np.abs(pt1[0]-pt2[0])==self.width:
                     y = pt1[1] # horizontal line
                     pt1=None
                     pt2=None
@@ -12553,37 +12525,37 @@ class Image:
         retVal = None
         if( x is not None and y is None and pt1 is None and pt2 is None):
             if( x >= 0 and x < self.width):
-                if( len(linescan) != self.height ):
+                if len(linescan) != self.height:
                     linescan = linescan.resample(self.height)
                 #check for number of points
                 #linescan = np.array(linescan)
-                img[x,:] = np.clip(linescan[:], 0, 255)
+                img[x, :] = np.clip(linescan[:], 0, 255)
             else:
                 warnings.warn("ImageClass.setLineScan: No coordinates to re-insert linescan.")
                 return None
-        elif( x is None and y is not None and pt1 is None and pt2 is None):
+        elif  x is None and y is not None and pt1 is None and pt2 is None:
             if( y >= 0 and y < self.height):
-                if( len(linescan) != self.width ):
+                if len(linescan) != self.width:
                     linescan = linescan.resample(self.width)
                 #check for number of points
                 #linescan = np.array(linescan)
-                img[:,y] = np.clip(linescan[:], 0, 255)
+                img[:, y] = np.clip(linescan[:], 0, 255)
             else:
                 warnings.warn("ImageClass.setLineScan: No coordinates to re-insert linescan.")
                 return None
-        elif( (isinstance(pt1,tuple) or isinstance(pt1,list)) and
-              (isinstance(pt2,tuple) or isinstance(pt2,list)) and
+        elif( (isinstance(pt1, tuple) or isinstance(pt1, list)) and
+              (isinstance(pt2, tuple) or isinstance(pt2, list)) and
               len(pt1) == 2 and len(pt2) == 2 and
               x is None and y is None):
 
-            pts = self.bresenham_line(pt1,pt2)
-            if( len(linescan) != len(pts) ):
+            pts = self.bresenham_line(pt1, pt2)
+            if len(linescan) != len(pts):
                 linescan = linescan.resample(len(pts))
             #linescan = np.array(linescan)
             linescan = np.clip(linescan[:], 0, 255)
             idx = 0
             for pt in pts:
-                img[pt[0],pt[1]]=linescan[idx]
+                img[pt[0], pt[1]]=linescan[idx]
                 idx = idx+1
         else:
             warnings.warn("ImageClass.setLineScan: No coordinates to re-insert linescan.")
@@ -12592,7 +12564,7 @@ class Image:
             retVal = Image(img)
         else:
             temp = np.copy(self.getNumpy())
-            temp[:,:,channel] = img
+            temp[:, :, channel] = img
             retVal = Image(temp)
         return retVal
 
@@ -12615,7 +12587,7 @@ class Image:
         * *y* - put line scan at the row y.
         * *pt1* - put line scan between two points on the line the line scan values always go in the +x direction
         * *pt2* - Second parameter for a non-vertical or horizontal line scan.
-        * *channel* - To select a channel. eg: selecting a channel RED,GREEN or BLUE. If set to -1 it operates with gray scale values
+        * *channel* - To select a channel. eg: selecting a channel RED, GREEN or BLUE. If set to -1 it operates with gray scale values
 
         
         **RETURNS**
@@ -12641,7 +12613,7 @@ class Image:
                 img = np.copy(self.getGrayNumpy())
             else:
                 try:
-                    img = np.copy(self.getNumpy()[:,:,linescan.channel])
+                    img = np.copy(self.getNumpy()[:, :, linescan.channel])
                 except IndexError:
                     print 'Channel missing!'
                     return None
@@ -12649,7 +12621,7 @@ class Image:
             if linescan.row is not None:
                 if len(linescan) == self.width:
                     ls = np.clip(linescan, 0, 255)
-                    img[:,linescan.row] = ls[:]
+                    img[:, linescan.row] = ls[:]
                 else:
                     warnings.warn("LineScan Size and Image size do not match")
                     return None
@@ -12657,36 +12629,36 @@ class Image:
             elif linescan.col is not None:
                 if len(linescan) == self.height:
                     ls = np.clip(linescan, 0, 255)
-                    img[linescan.col,:] = ls[:]
+                    img[linescan.col, :] = ls[:]
                 else:
                     warnings.warn("LineScan Size and Image size do not match")
                     return None
             elif linescan.pt1 and linescan.pt2:
                 pts = self.bresenham_line(linescan.pt1, linescan.pt2)
-                if( len(linescan) != len(pts) ):
+                if len(linescan) != len(pts):
                     linescan = linescan.resample(len(pts))
                 ls = np.clip(linescan[:], 0, 255)
                 idx = 0
                 for pt in pts:
-                    img[pt[0],pt[1]]=ls[idx]
+                    img[pt[0], pt[1]]=ls[idx]
                     idx = idx+1
             
             if linescan.channel == -1:
                 retVal = Image(img)
             else:
                 temp = np.copy(self.getNumpy())
-                temp[:,:,linescan.channel] = img
+                temp[:, :, linescan.channel] = img
                 retVal = Image(temp)
 
         else:
             if channel is None:
-                retVal = self.setLineScan(linescan , x, y, pt1, pt2, linescan.channel)
+                retVal = self.setLineScan(linescan, x, y, pt1, pt2, linescan.channel)
             else:
-                retVal = self.setLineScan(linescan , x, y, pt1, pt2, channel)
+                retVal = self.setLineScan(linescan, x, y, pt1, pt2, channel)
         return retVal
 
 
-    def getPixelsOnLine(self,pt1,pt2):
+    def getPixelsOnLine(self, pt1, pt2):
         """
         **SUMMARY**
 
@@ -12694,8 +12666,8 @@ class Image:
 
         **PARAMETERS**
 
-        * *pt1* - The first pixel coordinate as an (x,y) tuple or list.
-        * *pt2* - The second pixel coordinate as an (x,y) tuple or list.
+        * *pt1* - The first pixel coordinate as an (x, y) tuple or list.
+        * *pt2* - The second pixel coordinate as an (x, y) tuple or list.
 
         **RETURNS**
 
@@ -12704,20 +12676,20 @@ class Image:
         **EXAMPLE**
 
         >>>> img = Image('something.png')
-        >>>> img.getPixelsOnLine( (0,0), (img.width/2,img.height/2) )
+        >>>> img.getPixelsOnLine( (0, 0), (img.width/2, img.height/2) )
         """
         retVal = None
-        if( (isinstance(pt1,tuple) or isinstance(pt1,list)) and
-            (isinstance(pt2,tuple) or isinstance(pt2,list)) and
+        if( (isinstance(pt1, tuple) or isinstance(pt1, list)) and
+            (isinstance(pt2, tuple) or isinstance(pt2, list)) and
             len(pt1) == 2 and len(pt2) == 2 ):
-            pts = self.bresenham_line(pt1,pt2)
-            retVal = [self.getPixel(p[0],p[1]) for p in pts]
+            pts = self.bresenham_line(pt1, pt2)
+            retVal = [self.getPixel(p[0], p[1]) for p in pts]
         else:
             warnings.warn("ImageClass.getPixelsOnLine - The line you provided is not valid")
 
         return retVal
 
-    def bresenham_line(self, (x,y), (x2,y2)):
+    def bresenham_line(self, (x, y), (x2, y2)):
         """
         Brensenham line algorithm
 
@@ -12750,24 +12722,24 @@ class Image:
             sy = -1
         if dy > dx:
             steep = 1
-            x,y = y,x
-            dx,dy = dy,dx
-            sx,sy = sy,sx
+            x, y = y, x
+            dx, dy = dy, dx
+            sx, sy = sy, sx
         d = (2 * dy) - dx
-        for i in range(0,dx):
+        for i in range(0, dx):
             if steep:
-                coords.append((y,x))
+                coords.append((y, x))
             else:
-                coords.append((x,y))
+                coords.append((x, y))
             while d >= 0:
                 y = y + sy
                 d = d - (2 * dx)
             x = x + sx
             d = d + (2 * dy)
-        coords.append((x2,y2))
+        coords.append((x2, y2))
         return coords
 
-    def uncrop(self, ListofPts): #(x,y),(x2,y2)):
+    def uncrop(self, ListofPts): #(x, y), (x2, y2)):
         """
         **SUMMARY**
 
@@ -12784,12 +12756,12 @@ class Image:
         **EXAMPLE**
 
         >> img = Image('lenna')
-        >> croppedImg = img.crop(10,20,250,500)
-        >> sourcePts = croppedImg.uncrop([(2,3),(56,23),(24,87)])
+        >> croppedImg = img.crop(10, 20, 250, 500)
+        >> sourcePts = croppedImg.uncrop([(2, 3), (56, 23), (24, 87)])
         """
-        return [(i[0]+self._uncroppedX,i[1]+self._uncroppedY)for i in ListofPts]
+        return [(i[0]+self._uncroppedX, i[1]+self._uncroppedY)for i in ListofPts]
 
-    def grid(self,dimensions=(10,10), color=(0, 0, 0), width=1, antialias=True, alpha=-1):
+    def grid(self, dimensions=(10, 10), color=(0, 0, 0), width=1, antialias=True, alpha=-1):
 
 
         """
@@ -12799,7 +12771,7 @@ class Image:
 
         **PARAMETERS**
 
-        * *dimensions* - No of rows and cols as an (rows,xols) tuple or list.
+        * *dimensions* - No of rows and cols as an (rows, xols) tuple or list.
         * *color* - Grid's color as a tuple or list.
         * *width* - The grid line width in pixels.
         * *antialias* - Draw an antialiased object
@@ -12813,8 +12785,8 @@ class Image:
         **EXAMPLE**
 
         >>>> img = Image('something.png')
-        >>>> img.grid([20,20],(255,0,0))
-        >>>> img.grid((20,20),(255,0,0),1,True,0)
+        >>>> img.grid([20, 20], (255, 0, 0))
+        >>>> img.grid((20, 20), (255, 0, 0), 1, True, 0)
         """
         retVal = self.copy()
         try:
@@ -12828,11 +12800,11 @@ class Image:
 
         grid = DrawingLayer(self.size()) #add a new layer for grid
         while( (i < dimensions[0]) and (j < dimensions[1]) ):
-            if( i < dimensions[0] ):
-                grid.line((0,step_row*i), (self.size()[0],step_row*i), color, width, antialias, alpha)
+            if i < dimensions[0]:
+                grid.line((0, step_row*i), (self.size()[0], step_row*i), color, width, antialias, alpha)
                 i = i + 1
-            if( j < dimensions[1] ):
-                grid.line((step_col*j,0), (step_col*j,self.size()[1]), color, width, antialias, alpha)
+            if j < dimensions[1]:
+                grid.line((step_col*j, 0), (step_col*j, self.size()[1]), color, width, antialias, alpha)
                 j = j + 1
         retVal._gridLayer[0] = retVal.addDrawingLayer(grid) # store grid layer index
         retVal._gridLayer[1] = dimensions
@@ -12856,14 +12828,14 @@ class Image:
         **EXAMPLE**
 
         >>>> img = Image('something.png')
-        >>>> img.grid([20,20],(255,0,0))
+        >>>> img.grid([20, 20], (255, 0, 0))
         >>>> gridLayer = img.removeGrid()
 
         """
 
         if self._gridLayer[0] is not None:
             grid = self.removeDrawingLayer(self._gridLayer[0])
-            self._gridLayer=[None,[0, 0]]
+            self._gridLayer=[None, [0, 0]]
             return grid
         else:
             return None
@@ -12887,7 +12859,7 @@ class Image:
         **EXAMPLE**
 
         >>>> img = Image('something.png')
-        >>>> img.grid([20,20],(255,0,0))
+        >>>> img.grid([20, 20], (255, 0, 0))
         >>>> lines = img.findGridLines()
 
         """
@@ -12907,10 +12879,10 @@ class Image:
         j = 1
 
         while( i < self._gridLayer[1][0] ):
-            lineFS.append(Line(self,((0,step_row*i), (self.size()[0],step_row*i))))
+            lineFS.append(Line(self, ((0, step_row*i), (self.size()[0], step_row*i))))
             i = i + 1
         while( j < self._gridLayer[1][1] ):
-            lineFS.append(Line(self,((step_col*j,0), (step_col*j,self.size()[1]))))
+            lineFS.append(Line(self, ((step_col*j, 0), (step_col*j, self.size()[1]))))
             j = j + 1
 
         return lineFS
@@ -13119,8 +13091,8 @@ class Image:
         tkp, td = descriptor.compute(template_img, tkp)
 
         idx, dist = self._getFLANNMatches(sd, td)
-        dist = dist[:,0]/2500.0
-        dist = dist.reshape(-1,).tolist()
+        dist = dist[:, 0]/2500.0
+        dist = dist.reshape(-1, ).tolist()
         idx = idx.reshape(-1).tolist()
         indices = range(len(dist))
         indices.sort(key=lambda i: dist[i])
@@ -13134,8 +13106,8 @@ class Image:
                 break #since sorted
 
         idx, dist = self._getFLANNMatches(td, sd)
-        dist = dist[:,0]/2500.0
-        dist = dist.reshape(-1,).tolist()
+        dist = dist[:, 0]/2500.0
+        dist = dist.reshape(-1, ).tolist()
         idx = idx.reshape(-1).tolist()
         indices = range(len(dist))
         indices.sort(key=lambda i: dist[i])
@@ -13178,7 +13150,7 @@ class Image:
 
         >>> img = cam.getImage()
         >>> template = Image("myTemplate.png")
-        >>> result = img.drawSIFTKeypointMatch(self,template,300.00):
+        >>> result = img.drawSIFTKeypointMatch(self, template, 300.00):
 
         **SEE ALSO**
 
@@ -13189,7 +13161,7 @@ class Image:
         """
         if template == None:
             return
-        resultImg = template.sideBySide(self,scale=False)
+        resultImg = template.sideBySide(self, scale=False)
         hdif = (self.height-template.height)/2
         sfs, tfs = self.matchSIFTKeyPoints(template, distance)
         maxlen = min(len(sfs), len(tfs))
@@ -13200,10 +13172,10 @@ class Image:
             tkp = tfs[i]
             pt_a = (int(tkp.y), int(tkp.x)+hdif)
             pt_b = (int(skp.y)+template.width, int(skp.x))
-            resultImg.drawLine(pt_a, pt_b, color=Color.getRandom(),thickness=width)
+            resultImg.drawLine(pt_a, pt_b, color=Color.getRandom(), thickness=width)
         return resultImg
 
-    def stegaEncode(self,message):
+    def stegaEncode(self, message):
         """
         **SUMMARY**
 
@@ -13244,8 +13216,8 @@ class Image:
             logger.warning("stepic library required")
             return None
         warnings.simplefilter("ignore")
-        pilImg = pil.frombuffer("RGB",self.size(),self.toString())
-        stepic.encode_inplace(pilImg,message)
+        pilImg = pil.frombuffer("RGB", self.size(), self.toString())
+        stepic.encode_inplace(pilImg, message)
         retVal = Image(pilImg)
         return retVal.flipVertical()
 
@@ -13287,7 +13259,7 @@ class Image:
             logger.warning("stepic library required")
             return None
         warnings.simplefilter("ignore")
-        pilImg = pil.frombuffer("RGB",self.size(),self.toString())
+        pilImg = pil.frombuffer("RGB", self.size(), self.toString())
         result = stepic.decode(pilImg)
         return result
 
@@ -13358,14 +13330,14 @@ class Image:
 
         elif method == "harris":
             harris_function = detA - (alpha*traceA*traceA)
-            for j,i in np.argwhere(harris_function > harris_thresh):
+            for j, i in np.argwhere(harris_function > harris_thresh):
                 feature_list.append(Feature(self, i, j, ((i, j), (i, j), (i, j), (i, j))))
         else:
             logger.warning("Invalid method.")
             return None
         return feature_list
 
-    def watershed(self, mask=None, erode=2,dilate=2, useMyMask=False):
+    def watershed(self, mask=None, erode=2, dilate=2, useMyMask=False):
         """
         **SUMMARY**
 
@@ -13395,11 +13367,11 @@ class Image:
         # here is an example of how to create your own mask
 
         >>> img = Image('lenna')
-        >>> myMask = Image((img.width,img.height))
-        >>> myMask = myMask.floodFill((0,0),color=Color.WATERSHED_BG)
+        >>> myMask = Image((img.width, img.height))
+        >>> myMask = myMask.floodFill((0, 0), color=Color.WATERSHED_BG)
         >>> mask = img.threshold(128)
         >>> myMask = (myMask-mask.dilate(2)+mask.erode(2))
-        >>> result = img.watershed(mask=myMask,useMyMask=True)
+        >>> result = img.watershed(mask=myMask, useMyMask=True)
 
         **SEE ALSO**
         Color.WATERSHED_FG - The watershed foreground color
@@ -13418,20 +13390,20 @@ class Image:
         if mask is None:
             mask = self.binarize().invert()
         newmask = None 
-        if( not useMyMask ):
-            newmask = Image((self.width,self.height))
-            newmask = newmask.floodFill((0,0),color=Color.WATERSHED_BG)            
+        if not useMyMask:
+            newmask = Image((self.width, self.height))
+            newmask = newmask.floodFill((0, 0), color=Color.WATERSHED_BG)            
             newmask = (newmask-mask.dilate(dilate)+mask.erode(erode))
         else:
             newmask = mask            
         m = np.int32(newmask.getGrayNumpyCv2())
-        cv2.watershed(self.getNumpyCv2(),m)
+        cv2.watershed(self.getNumpyCv2(), m)
         m = cv2.convertScaleAbs(m)
-        ret,thresh = cv2.threshold(m,0,255,cv2.cv.CV_THRESH_OTSU)
-        retVal = Image(thresh,cv2image=True)
+        ret, thresh = cv2.threshold(m, 0, 255, cv2.cv.CV_THRESH_OTSU)
+        retVal = Image(thresh, cv2image=True)
         return retVal
 
-    def findBlobsFromWatershed(self,mask=None,erode=2,dilate=2,useMyMask=False,invert=False,minsize=20,maxsize=None):
+    def findBlobsFromWatershed(self, mask=None, erode=2, dilate=2, useMyMask=False, invert=False, minsize=20, maxsize=None):
         """
         **SUMMARY**
 
@@ -13469,12 +13441,12 @@ class Image:
         Color.WATERSHED_UNSURE - The watershed not sure if fg or bg color.
         
         """        
-        newmask = self.watershed(mask,erode,dilate,useMyMask)
-        if( invert ):
+        newmask = self.watershed(mask, erode, dilate, useMyMask)
+        if invert:
             newmask = mask.invert()
-        return self.findBlobsFromMask(newmask,minsize=minsize,maxsize=maxsize)
+        return self.findBlobsFromMask(newmask, minsize=minsize, maxsize=maxsize)
 
-    def maxValue(self,locations=False):
+    def maxValue(self, locations=False):
         """
         **SUMMARY**
         Returns the brightest/maximum pixel value in the
@@ -13489,26 +13461,26 @@ class Image:
         **RETURNS**
 
         The maximum value and optionally the list of points as
-        a list of (x,y) tuples.
+        a list of (x, y) tuples.
         
         **EXAMPLE**
 
         >>> img = Image("lenna")
         >>> max = img.maxValue()
         >>> min, pts = img.minValue(locations=True)
-        >>> img2 = img.stretch(min,max)
+        >>> img2 = img.stretch(min, max)
 
         """
         if(locations):
             val = np.max(self.getGrayNumpy())
-            x,y = np.where(self.getGrayNumpy()==val)
-            locs = zip(x.tolist(),y.tolist())
-            return int(val),locs
+            x, y = np.where(self.getGrayNumpy()==val)
+            locs = zip(x.tolist(), y.tolist())
+            return int(val), locs
         else:
             val = np.max(self.getGrayNumpy())
             return int(val)
                 
-    def minValue(self,locations=False):
+    def minValue(self, locations=False):
         """
         **SUMMARY**
         Returns the darkest/minimum pixel value in the
@@ -13523,21 +13495,21 @@ class Image:
         **RETURNS**
 
         The minimum value and optionally the list of points as
-        a list of (x,y) tuples.
+        a list of (x, y) tuples.
         
         **EXAMPLE**
 
         >>> img = Image("lenna")
         >>> max = img.maxValue()
         >>> min, pts = img.minValue(locations=True)
-        >>> img2 = img.stretch(min,max)
+        >>> img2 = img.stretch(min, max)
 
         """
         if(locations):
             val = np.min(self.getGrayNumpy())
-            x,y = np.where(self.getGrayNumpy()==val)
-            locs = zip(x.tolist(),y.tolist())
-            return int(val),locs
+            x, y = np.where(self.getGrayNumpy()==val)
+            locs = zip(x.tolist(), y.tolist())
+            return int(val), locs
         else:
             val = np.min(self.getGrayNumpy())
             return int(val)
@@ -13548,9 +13520,9 @@ class Image:
         This function is meant to try and find interesting areas of an
         image. It does this by finding keypoint clusters in an image.
         It uses keypoint (ORB) detection to locate points of interest
-        and then uses kmeans clustering to get the X,Y coordinates of
+        and then uses kmeans clustering to get the X, Y coordinates of
         those clusters of keypoints. You provide the expected number
-        of clusters and you will get back a list of the X,Y coordinates
+        of clusters and you will get back a list of the X, Y coordinates
         and rank order of the number of Keypoints around those clusters
 
         **PARAMETERS**
@@ -13577,7 +13549,7 @@ class Image:
         if keypoints == None or keypoints <= 0:
           return None
           
-        xypoints = np.array([(f.x,f.y) for f in keypoints])
+        xypoints = np.array([(f.x, f.y) for f in keypoints])
         xycentroids, xylabels = scv.kmeans2(xypoints, num_of_clusters) # find the clusters of keypoints
         xycounts = np.array([])
         
@@ -13590,7 +13562,7 @@ class Image:
             clusters = clusters[::-1] #reverse if descending
 
         fs = FeatureSet()
-        for x,y in clusters: #map the values to a feature set
+        for x, y in clusters: #map the values to a feature set
             f = Corner(self, x, y)
             fs.append(f)
   
@@ -13640,7 +13612,7 @@ class Image:
             warnings.warn("OpenCV version >= 2.4.2 requierd")
             return None
 
-        if int(cv2.__version__.replace('.','0'))<20402:
+        if int(cv2.__version__.replace('.', '0'))<20402:
             warnings.warn("OpenCV version >= 2.4.2 requierd")
             return None
             
@@ -13683,7 +13655,7 @@ class Image:
         '''
 
         hist = self.histogram(bins)
-        vals = [(e,h) for h,e in enumerate(hist)]
+        vals = [(e, h) for h, e in enumerate(hist)]
         vals.sort()
         vals.reverse()
 
@@ -13702,14 +13674,14 @@ class Image:
         The bins parameter can be used to lump grays together, by default it is 
         set to 255
 
-        Returns a list of tuples, each tuple contains the grayscale intensity,
+        Returns a list of tuples, each tuple contains the grayscale intensity, 
         and the fraction of the image that has it.
 
         **PARAMETERS**
 
         * *bins* - the integer number of bins, between 1 and 255.
 
-        * *delta* - the minimum difference betweena peak and the following points,
+        * *delta* - the minimum difference betweena peak and the following points, 
                     before a peak may be considered a peak.Useful to hinder the 
                     algorithm from picking up false peaks towards to end of
                     the signal.
@@ -13719,7 +13691,7 @@ class Image:
 
         **RETURNS**
 
-        A list of (grays,fraction) tuples.
+        A list of (grays, fraction) tuples.
 
         **NOTE**
 
@@ -13800,7 +13772,7 @@ class Image:
         **Parameters**
 
         * *gray* - Boolean value which identifies the colorspace of
-            the input image. If set to True, filter uses gray scale values,
+            the input image. If set to True, filter uses gray scale values, 
             otherwise colorspace is used.
 
         * *weight* - Denoising weight, it controls the extent of denoising.
@@ -13839,7 +13811,7 @@ class Image:
             return None
 
         if resize != 1:
-            img = img.resize(int(img.width*resize),int(img.height*resize))
+            img = img.resize(int(img.width*resize), int(img.height*resize))
 
         if gray is True:
             img = img.getGrayNumpy()
@@ -13851,16 +13823,16 @@ class Image:
             warnings.warn('gray value not valid')
             return None
 
-        denoise_mat = denoise_tv_chambolle(img,weight,eps,max_iter,multichannel)
+        denoise_mat = denoise_tv_chambolle(img, weight, eps, max_iter, multichannel)
         retVal = img * denoise_mat
 
         retVal = Image(retVal)
         if resize != 1:
-            return retVal.resize(int(retVal.width/resize),int(retVal.width/resize))
+            return retVal.resize(int(retVal.width/resize), int(retVal.width/resize))
         else:
             return retVal
       
-    def motionBlur(self,intensity=15, direction='NW'):
+    def motionBlur(self, intensity=15, direction='NW'):
         """
         **SUMMARY**
 
@@ -13907,13 +13879,13 @@ class Image:
                 tmp[i][i]=0
 
         if direction == 'right' or direction.upper() == 'E':
-            kernel = np.concatenate((np.zeros((1,mid)),np.ones((1,mid+1))),axis=1)
+            kernel = np.concatenate((np.zeros((1, mid)), np.ones((1, mid+1))), axis=1)
         elif direction == 'left' or direction.upper() == 'W':
-            kernel = np.concatenate((np.ones((1,mid+1)),np.zeros((1,mid))),axis=1)
+            kernel = np.concatenate((np.ones((1, mid+1)), np.zeros((1, mid))), axis=1)
         elif direction == 'up' or direction.upper() == 'N':
-            kernel = np.concatenate((np.ones((1+mid,1)),np.zeros((mid,1))),axis=0)
+            kernel = np.concatenate((np.ones((1+mid, 1)), np.zeros((mid, 1))), axis=0)
         elif direction == 'down' or direction.upper() == 'S':
-            kernel = np.concatenate((np.zeros((mid,1)),np.ones((mid+1,1))),axis=0)
+            kernel = np.concatenate((np.zeros((mid, 1)), np.ones((mid+1, 1))), axis=0)
         elif direction.upper() == 'NW':
             kernel = tmp
         elif direction.upper() == 'NE':
@@ -14003,7 +13975,7 @@ class Image:
             return None
 
         if not cascade:
-            cascade = "/".join([LAUNCH_PATH,"/Features/HaarCascades/face.xml"])
+            cascade = "/".join([LAUNCH_PATH, "/Features/HaarCascades/face.xml"])
 
         faces = self.findHaarFeatures(cascade)
         if not faces:
@@ -14016,7 +13988,7 @@ class Image:
             retVal.append([face, label, confidence])
         return retVal
 
-    def channelMixer(self, channel = 'r', weight = (100,100,100)):
+    def channelMixer(self, channel = 'r', weight = (100, 100, 100)):
         """
         **SUMMARY**
 
@@ -14042,7 +14014,7 @@ class Image:
 
         >>> img = Image("lenna")
         >>> img2 = img.channelMixer()
-        >>> Img3 = img.channelMixer(channel = 'g', weights = (3,2,1))
+        >>> Img3 = img.channelMixer(channel = 'g', weights = (3, 2, 1))
 
         **NOTE**
 
@@ -14055,7 +14027,7 @@ class Image:
                 warnings.warn('Value of weights can be from -200 to 200%')
                 return None
 
-        weight = map(float,weight)
+        weight = map(float, weight)
         channel = channel.lower()
         if channel == 'r':
             r = r*(weight[0]/100.0) + g*(weight[1]/100.0) + b*(weight[2]/100.0)
@@ -14097,8 +14069,8 @@ class Image:
         """
         img = self.copy()
         grayimg = img.grayscale()
-        gx = [[1,1,1],[0,0,0],[-1,-1,-1]]
-        gy = [[-1,0,1],[-1,0,1],[-1,0,1]]
+        gx = [[1, 1, 1], [0, 0, 0], [-1, -1, -1]]
+        gy = [[-1, 0, 1], [-1, 0, 1], [-1, 0, 1]]
         grayx = grayimg.convolve(gx)
         grayy = grayimg.convolve(gy)
         grayxnp = np.uint64(grayx.getGrayNumpy())
@@ -14106,7 +14078,7 @@ class Image:
         retVal = Image(np.sqrt(grayxnp**2+grayynp**2))
         return retVal
 
-    def edgeSnap(self,pointList,step = 1):
+    def edgeSnap(self, pointList, step = 1):
         """
         **SUMMARY**
 
@@ -14130,8 +14102,8 @@ class Image:
         **EXAMPLE**
 
         >>> image = Image("logo").edges()
-        >>> edgeLines = image.edgeSnap([(50,50),(230,200)])
-        >>> edgeLines.draw(color = Color.YELLOW,width = 3)
+        >>> edgeLines = image.edgeSnap([(50, 50), (230, 200)])
+        >>> edgeLines.draw(color = Color.YELLOW, width = 3)
         """
 
         imgArray = self.getGrayNumpy()
@@ -14140,7 +14112,7 @@ class Image:
         
         #checking that all values are 0 and 255
         if( c1 + c2 != imgArray.size):
-            raise ValueError,"Image must be binary"
+            raise ValueError, "Image must be binary"
 
         if(len(pointList) < 2 ):
             return None
@@ -14149,16 +14121,16 @@ class Image:
         featureSet  = FeatureSet()
         last = pointList[0]
         for point in pointList[1:None]:
-            finalList += self._edgeSnap2(last,point,step)
+            finalList += self._edgeSnap2(last, point, step)
             last = point
             
         last = finalList[0]
         for point in finalList:
-            featureSet.append(Line(self,(last,point)))
+            featureSet.append(Line(self, (last, point)))
             last = point
         return featureSet
 
-    def _edgeSnap2(self,start,end,step):
+    def _edgeSnap2(self, start, end, step):
         """
         **SUMMARY**
 
@@ -14178,7 +14150,7 @@ class Image:
 
         **RETURNS**
 
-        * List * - A list of tuples , each tuple contains (x,y) values
+        * List * - A list of tuples, each tuple contains (x, y) values
         
         """
 
@@ -14188,12 +14160,12 @@ class Image:
         #Size of the box around a point which is checked for edges.
         box = step*4
 
-        xmin = min(start[0],end[0])
-        xmax = max(start[0],end[0])
-        ymin = min(start[1],end[1])
-        ymax = max(start[1],end[1])
+        xmin = min(start[0], end[0])
+        xmax = max(start[0], end[0])
+        ymin = min(start[1], end[1])
+        ymax = max(start[1], end[1])
 
-        line = self.bresenham_line(start,end)
+        line = self.bresenham_line(start, end)
 
         #List of Edge Points.
         finalList = []
@@ -14204,10 +14176,10 @@ class Image:
 
         while  i < len(line) :
             
-            x,y = line[i]
+            x, y = line[i]
             
             #Get the matrix of points fromx around current point.
-            region = edgeMap[x-box:x+box,y-box:y+box]
+            region = edgeMap[x-box:x+box, y-box:y+box]
 
             #Condition at the boundary of the image
             if(region.shape[0] == 0 or region.shape[1] == 0):
@@ -14224,10 +14196,10 @@ class Image:
 
                 # Incase multiple edge points exist, choose the one closest
                 # to the end point
-                for ix,iy in indexList:
-                    dist = math.hypot(x+ix-end[0],iy+y-end[1])
+                for ix, iy in indexList:
+                    dist = math.hypot(x+ix-end[0], iy+y-end[1])
                     if(minDist ==None or dist < minDist ):
-                        dx,dy = ix,iy
+                        dx, dy = ix, iy
                         minDist = dist
 
                 # The distance of the new point is compared with the least 
@@ -14238,18 +14210,18 @@ class Image:
                     i+=step
                     continue
 
-                if( overallMinDist == None or minDist < overallMinDist ):
+                if overallMinDist == None or minDist < overallMinDist:
                     overallMinDist = minDist
 
                 # Reset the points in the box so that they are not detected
                 # during the next iteration.
-                edgeMap[x-box:x+box,y-box:y+box] = 0
+                edgeMap[x-box:x+box, y-box:y+box] = 0
 
                 # Keep all the points in the bounding box
                 if( xmin <= x+dx <= xmax and ymin <= y+dx <=ymax):
                     #Add the point to list and redefine the line
-                    line =[(x+dx,y+dy)] + self.bresenham_line((x+dx, y+dy), end)
-                    finalList += [(x+dx,y+dy)]
+                    line =[(x+dx, y+dy)] + self.bresenham_line((x+dx, y+dy), end)
+                    finalList += [(x+dx, y+dy)]
                 
                     i = 0
             
@@ -14257,7 +14229,7 @@ class Image:
         finalList += [end]
         return finalList
 
-    def motionBlur(self,intensity=15, angle = 0):
+    def motionBlur(self, intensity=15, angle = 0):
         """
         **SUMMARY**
 
@@ -14281,7 +14253,7 @@ class Image:
 
         **EXAMPLE**
         >>> img = Image ('lenna')
-        >>> blur = img.motionBlur(40,45)
+        >>> blur = img.motionBlur(40, 45)
         >>> blur.show()
         
         """
@@ -14292,20 +14264,20 @@ class Image:
             logger.warning('power less than 1 will result in no change')
             return self
         
-        kernel = np.zeros((intensity,intensity))
+        kernel = np.zeros((intensity, intensity))
         
         rad = math.radians(angle)
-        x1,y1 = intensity/2,intensity/2
+        x1, y1 = intensity/2, intensity/2
         
         x2 = int(x1-(intensity-1)/2*math.sin(rad))
         y2 = int(y1 -(intensity-1)/2*math.cos(rad))
         
-        line = self.bresenham_line((x1,y1),(x2,y2))
+        line = self.bresenham_line((x1, y1), (x2, y2))
         
         x = [p[0] for p in line]
         y = [p[1] for p in line]
         
-        kernel[x,y] = 1
+        kernel[x, y] = 1
         kernel = kernel/len(line)
         return self.convolve(kernel = kernel)
 
@@ -14331,18 +14303,18 @@ class Image:
         
         **NOTES**
 
-        Algorithm used: value = (MAX(R,G,B) + MIN(R,G,B))/2
+        Algorithm used: value = (MAX(R, G, B) + MIN(R, G, B))/2
 
         """
         if( self._colorSpace == ColorSpace.BGR or
                 self._colorSpace == ColorSpace.UNKNOWN ):
-            imgMat = np.array(self.getNumpyCv2(),dtype=np.int)
-            retVal = np.array((np.max(imgMat,2) + np.min(imgMat,2))/2,dtype=np.uint8)
+            imgMat = np.array(self.getNumpyCv2(), dtype=np.int)
+            retVal = np.array((np.max(imgMat, 2) + np.min(imgMat, 2))/2, dtype=np.uint8)
         else:
             logger.warnings('Input a RGB image')
             return None
 
-        return Image(retVal,cv2image=True)
+        return Image(retVal, cv2image=True)
 
     def getLuminosity(self):
         """
@@ -14371,20 +14343,20 @@ class Image:
         """
         if( self._colorSpace == ColorSpace.BGR or
                 self._colorSpace == ColorSpace.UNKNOWN ):
-            imgMat = np.array(self.getNumpyCv2(),dtype=np.int)
-            retVal = np.array(np.average(imgMat,2,(0.07,0.71,0.21)),dtype=np.uint8)
+            imgMat = np.array(self.getNumpyCv2(), dtype=np.int)
+            retVal = np.array(np.average(imgMat, 2, (0.07, 0.71, 0.21)), dtype=np.uint8)
         else:
             logger.warnings('Input a RGB image')
             return None
 
-        return Image(retVal,cv2image=True)
+        return Image(retVal, cv2image=True)
 
     def getAverage(self):
         """
         **SUMMARY**
 
         This method converts the given RGB image to grayscale by averaging out
-        the R,G,B values.
+        the R, G, B values.
 
         **Parameters**
         
@@ -14406,15 +14378,15 @@ class Image:
         """
         if( self._colorSpace == ColorSpace.BGR or
                 self._colorSpace == ColorSpace.UNKNOWN ):
-            imgMat = np.array(self.getNumpyCv2(),dtype=np.int)
-            retVal = np.array(imgMat.mean(2),dtype=np.uint8)
+            imgMat = np.array(self.getNumpyCv2(), dtype=np.int)
+            retVal = np.array(imgMat.mean(2), dtype=np.uint8)
         else:
             logger.warnings('Input a RGB image')
             return None
 
-        return Image(retVal,cv2image=True)
+        return Image(retVal, cv2image=True)
     
-    def smartRotate(self,bins=18,point = [-1,-1],auto = True,threshold=80,minLength=30,maxGap=10,t1=150,t2=200,fixed = True):
+    def smartRotate(self, bins=18, point = [-1, -1], auto = True, threshold=80, minLength=30, maxGap=10, t1=150, t2=200, fixed = True):
         """
         **SUMMARY**
 
@@ -14435,7 +14407,7 @@ class Image:
         * *threshold* - which determines the minimum "strength" of the line
             refer :py:meth:`findLines` for details.
             
-        * *minLength* - how many pixels long the line must be to be returned,
+        * *minLength* - how many pixels long the line must be to be returned, 
             refer :py:meth:`findLines` for details.
             
         * *maxGap* - how much gap is allowed between line segments to consider 
@@ -14447,8 +14419,8 @@ class Image:
         * *t2* - thresholds used in the edge detection step, 
             refer to :py:meth:`_getEdgeMap` for details.
             
-        * *fixed* - if fixed is true,keep the original image dimensions, 
-            otherwise scale the image to fit the rotation , refer to 
+        * *fixed* - if fixed is true, keep the original image dimensions, 
+            otherwise scale the image to fit the rotation, refer to 
             :py:meth:`rotate`
 
         **RETURNS**
@@ -14460,7 +14432,7 @@ class Image:
         >>> i.smartRotate().show()
 
         """
-        lines = self.findLines(threshold, minLength, maxGap, t1,t2)
+        lines = self.findLines(threshold, minLength, maxGap, t1, t2)
         
         if(len(lines) == 0):
             logger.warning("No lines found in the image")
@@ -14489,15 +14461,15 @@ class Image:
         if(auto ):
             x = sum([line.end_points[0][0] + line.end_points[1][0] for line in binn[index]])/2/len(binn[index])
             y = sum([line.end_points[0][1] + line.end_points[1][1] for line in binn[index]])/2/len(binn[index])
-            point = [x,y]
+            point = [x, y]
 
         #Determine whether to rotate the lines to vertical or horizontal 
         if (-45 <= avg <= 45):
-            return self.rotate(avg,fixed = fixed,point = point)
+            return self.rotate(avg, fixed = fixed, point = point)
         elif (avg > 45):
-            return self.rotate(avg-90,fixed = fixed,point = point)
+            return self.rotate(avg-90, fixed = fixed, point = point)
         else:
-            return self.rotate(avg+90,fixed = fixed,point = point)
+            return self.rotate(avg+90, fixed = fixed, point = point)
         #Congratulations !! You did a smart thing
 
     def normalize(self, newMin = 0, newMax = 255, minCut = 2, maxCut = 98):
@@ -14548,7 +14520,7 @@ class Image:
             freq, val = zip(*hist)
             maxfreq = (freq[0]-freq[-1])* maxCut/100.0
             minfreq = (freq[0]-freq[-1])* minCut/100.0
-            closestMatch = lambda a,l:min(l, key=lambda x:abs(x-a))
+            closestMatch = lambda a, l:min(l, key=lambda x:abs(x-a))
             maxval = closestMatch(maxfreq, val)
             minval = closestMatch(minfreq, val)
             retVal = (self.grayscale()-minval)*((newMax-newMin)/float(maxval-minval))+ newMin
@@ -14564,7 +14536,7 @@ class Image:
             return None
         return retVal
 
-    def getNormalizedHueHistogram(self,roi=None):
+    def getNormalizedHueHistogram(self, roi=None):
         """
         **SUMMARY**
 
@@ -14576,7 +14548,7 @@ class Image:
         **PARAMETERS**
 
         * *roi* - Anything that can be cajoled into being an ROI feature
-          including a tuple of (x,y,w,h), a list of points, or another feature.
+          including a tuple of (x, y, w, h), a list of points, or another feature.
 
         **RETURNS**
 
@@ -14585,7 +14557,7 @@ class Image:
         **EXAMPLE**
 
         >>> img = Image('lenna')
-        >>> roi = (0,0,100,100)
+        >>> roi = (0, 0, 100, 100)
         >>> hist = img.getNormalizedHueHistogram(roi)
 
         **SEE ALSO**
@@ -14601,16 +14573,16 @@ class Image:
             return None
 
         from SimpleCV.Features import ROI
-        if( roi ): # roi is anything that can be taken to be an roi
-            roi = ROI(roi,self)
+        if roi: # roi is anything that can be taken to be an roi
+            roi = ROI(roi, self)
             hsv = roi.crop().toHSV().getNumpyCv2()
         else: 
             hsv = self.toHSV().getNumpyCv2()
-        hist = cv2.calcHist([hsv],[0,1],None,[180,256],[0,180,0,256])
-        cv2.normalize(hist,hist,0,255,cv2.NORM_MINMAX)
+        hist = cv2.calcHist([hsv], [0, 1], None, [180, 256], [0, 180, 0, 256])
+        cv2.normalize(hist, hist, 0, 255, cv2.NORM_MINMAX)
         return hist
 
-    def backProjectHueHistogram(self,model,smooth=True,fullColor=False,threshold=None):
+    def backProjectHueHistogram(self, model, smooth=True, fullColor=False, threshold=None):
         """
         **SUMMARY**
 
@@ -14625,7 +14597,7 @@ class Image:
 
         * *model* - The histogram to use for pack projection. This can either be
           a histogram, anything that can be converted into an ROI for the image (like
-          an x,y,w,h tuple or a feature, or another image.
+          an x, y, w, h tuple or a feature, or another image.
         * *smooth* - A bool, True means apply a smoothing operation after doing the
           back project to improve the results.
         * *fullColor* - return the results as a color image where pixels included
@@ -14641,9 +14613,9 @@ class Image:
         **EXAMPLE**
 
         >>>> img = Image('lenna')
-        >>>> hist = img.getNormalizedHueHistogram((0,0,50,50)) # generate a hist
+        >>>> hist = img.getNormalizedHueHistogram((0, 0, 50, 50)) # generate a hist
         >>>> a = img.backProjectHueHistogram(hist)
-        >>>> b = img.backProjectHueHistogram((0,0,50,50) # same result
+        >>>> b = img.backProjectHueHistogram((0, 0, 50, 50) # same result
         >>>> c = img.backProjectHueHistogram(Image('lyle'))
 
         **SEE ALSO**
@@ -14657,34 +14629,34 @@ class Image:
             warnings.warn("OpenCV >= 2.3 required to use this.")
             return None
         
-        if( model is None ):
+        if model is None:
             warnings.warn('Backproject requires a model')
             return None
         # this is the easier test, try to cajole model into ROI
-        if( isinstance(model,Image) ):
+        if isinstance(model, Image):
             model = model.getNormalizedHueHistogram()
-        if(not isinstance(model,np.ndarray) or  model.shape != (180,256) ):
+        if(not isinstance(model, np.ndarray) or  model.shape != (180, 256) ):
             model = self.getNormalizedHueHistogram(model)
-        if( isinstance(model,np.ndarray) and model.shape == (180,256) ):
+        if isinstance(model, np.ndarray) and model.shape == (180, 256):
             hsv = self.toHSV().getNumpyCv2()
-            dst = cv2.calcBackProject([hsv],[0,1],model,[0,180,0,256],1)
+            dst = cv2.calcBackProject([hsv], [0, 1], model, [0, 180, 0, 256], 1)
             if smooth:
-                disc = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(5,5))
-                cv2.filter2D(dst,-1,disc,dst)
-            result = Image(dst,cv2image=True)
+                disc = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+                cv2.filter2D(dst, -1, disc, dst)
+            result = Image(dst, cv2image=True)
             result = result.toBGR()
-            if( threshold ):
+            if threshold:
                 result = result.threshold(threshold)
-            if( fullColor ):
-                temp = Image((self.width,self.height))
-                result = temp.blit(self,alphaMask=result)
+            if fullColor:
+                temp = Image((self.width, self.height))
+                result = temp.blit(self, alphaMask=result)
             return result
         else:
             warnings.warn('Backproject model does not appear to be valid')
             return None
 
         
-    def findBlobsFromHueHistogram(self,model,threshold=1,smooth=True,minsize=10,maxsize=None):
+    def findBlobsFromHueHistogram(self, model, threshold=1, smooth=True, minsize=10, maxsize=None):
         """
         **SUMMARY**
 
@@ -14699,7 +14671,7 @@ class Image:
 
         * *model* - The histogram to use for pack projection. This can either be
           a histogram, anything that can be converted into an ROI for the image (like
-          an x,y,w,h tuple or a feature, or another image.
+          an x, y, w, h tuple or a feature, or another image.
         * *smooth* - A bool, True means apply a smoothing operation after doing the
           back project to improve the results.
         * *threshold* - If this value is not None, we apply a threshold to the
@@ -14715,7 +14687,7 @@ class Image:
         **EXAMPLE**
 
         >>>> img = Image('lenna')
-        >>>> hist = img.getNormalizedHueHistogram((0,0,50,50)) # generate a hist
+        >>>> hist = img.getNormalizedHueHistogram((0, 0, 50, 50)) # generate a hist
         >>>> blobs = img.findBlobsFromHueHistogram(hist)
         >>>> blobs.show()
 
@@ -14725,8 +14697,8 @@ class Image:
         ImageClass.backProjectHueHistogram()
         
         """
-        newMask = self.backProjectHueHistogram(model,smooth,fullColor=False,threshold=threshold)
-        return self.findBlobsFromMask(newMask,minsize=minsize,maxsize=maxsize)        
+        newMask = self.backProjectHueHistogram(model, smooth, fullColor=False, threshold=threshold)
+        return self.findBlobsFromMask(newMask, minsize=minsize, maxsize=maxsize)        
 
     def filter(self, flt, grayscale=False):
         """
@@ -14735,7 +14707,7 @@ class Image:
         This function allows you to apply an arbitrary filter to the DFT of an image.
         This filter takes in a gray scale image, whiter values are kept and black values
         are rejected. In the DFT image, the lower frequency values are in the corners
-        of the image, while the higher frequency components are in the center. For example,
+        of the image, while the higher frequency components are in the center. For example, 
         a low pass filter has white squares in the corners and is black everywhere else.
 
         **PARAMETERS**
