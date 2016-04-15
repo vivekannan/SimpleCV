@@ -48,14 +48,14 @@ class BlobMaker:
         """
         if (maxsize <= 0):
             maxsize = img.width * img.height
-
+        
         #create a single channel image, thresholded to parameters
-
-        blobs = self.extractFromBinary(img.binarize(threshval, 255, threshblocksize, threshconstant).invert(),img,minsize,maxsize)
-        retVal = sorted(blobs,key=lambda x: x.mArea, reverse=True)
+        blobs = self.extractFromBinary(img.binarize(threshval, 255, threshblocksize, threshconstant).invert(), img, minsize, maxsize)
+        retVal = sorted(blobs, key=lambda x: x.mArea, reverse = True)
+        
         return FeatureSet(retVal)
 
-    def extractFromBinary(self,binaryImg,colorImg, minsize = 5, maxsize = -1,appx_level=3):
+    def extractFromBinary(self, binaryImg, colorImg, minsize = 5, maxsize = -1, appx_level = 3):
         """
         This method performs blob extraction given a binary source image that is used
         to get the blob images, and a color source image.

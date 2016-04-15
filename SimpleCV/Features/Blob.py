@@ -833,17 +833,9 @@ class Blob(Feature):
         The difference, as a percentage, between the hull of our blob and an idealized
         circle of our blob.
         """
-        w = self.mHullMask.width
-        h = self.mHullMask.height
         
-        idealcircle = Image((w, h))
-        radius = min(w, h) / 2
-        idealcircle.dl().circle((w / 2, h / 2), radius, filled = True, color = Color.WHITE)
-        idealcircle = idealcircle.applyLayers()
-        netdiff = (idealcircle - self.mHullMask) + (self.mHullMask - idealcircle)
-        numblack, numwhite = netdiff.histogram(2)
         
-        return float(numwhite) / (radius * radius * np.pi)
+        return 1 - (self.mPerimeter ** 2 / (4 * np.pi * self.mArea))
     
     def centroid(self):
         """
