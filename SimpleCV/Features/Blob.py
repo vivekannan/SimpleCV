@@ -793,17 +793,14 @@ class Blob(Feature):
     def rectangleDistance(self):
         """
         **SUMMARY**
-        
-        This compares the hull mask to the bounding rectangle.  Returns the area
-        of the blob's hull as a fraction of the bounding rectangle.
+         Compares the blob's area and the area of the minimum bounding rectangle of the blob.
         
         **RETURNS**
         
-        The number of pixels in the blobs hull mask over the number of pixels in its bounding box.
+        The ratio between the areas subtracted from one.
         """
-        blackcount, whitecount = self.mHullMask.histogram(2)
         
-        return abs(1.0 - float(whitecount) / (self.minRectWidth() * self.minRectHeight()))
+        return 1 - (self.mArea / (self.mMinRectangle[1][0] * self.mMinRectangle[1][1]))
     
     def isCircle(self, tolerance = 0.05):
         """
@@ -819,23 +816,22 @@ class Blob(Feature):
         
         True if the feature is within tolerance for being a circle, false otherwise.
         """
+        
         return self.circleDistance() < tolerance
     
     def circleDistance(self):
         """
         **SUMMARY**
         
-        Compare the hull mask to an ideal circle and count the number of pixels
-        that deviate as a fraction of total area of the ideal circle.
+        Calculates the Isoperimetric Inequality for the given blob using its perimeter and area.
+        Closer the Isoperimetric Inequality is to 1, closer the blob is to a circle.
         
         **RETURNS**
         
-        The difference, as a percentage, between the hull of our blob and an idealized
-        circle of our blob.
+        Isoperimetric inequality subtracted from 1.
         """
         
-        
-        return 1 - (self.mPerimeter ** 2 / (4 * np.pi * self.mArea))
+        return 1 - (4 * np.pi * self.mArea / self.mPerimeter ** 2)
     
     def centroid(self):
         """
